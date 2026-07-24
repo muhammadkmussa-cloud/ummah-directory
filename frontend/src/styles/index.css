@@ -1,0 +1,93 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-primary: #10b981;
+  }
+
+  body {
+    @apply bg-surface-50 text-surface-900 antialiased font-sans overscroll-none;
+  }
+
+  /* RTL Support overrides */
+  [dir="rtl"] {
+    text-align: right;
+  }
+  
+  [dir="rtl"] .ltr-icon {
+    transform: scaleX(-1);
+  }
+}
+
+@layer components {
+  /* New Social App Components */
+  
+  .btn-primary {
+    @apply bg-primary-600 text-white px-5 py-2.5 rounded-full font-semibold shadow-sm
+           hover:bg-primary-700 active:scale-95 transition-all duration-200 disabled:opacity-50;
+  }
+
+  .btn-outline {
+    @apply border border-surface-200 text-surface-700 px-5 py-2.5 rounded-full font-semibold
+           hover:bg-surface-50 active:scale-95 transition-all duration-200;
+  }
+
+  .input-field {
+    @apply w-full px-4 py-3 bg-surface-100 border-transparent rounded-2xl
+           focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
+           placeholder:text-surface-400 transition-all duration-200;
+  }
+
+  .card {
+    @apply bg-white rounded-3xl shadow-sm border border-surface-100 p-5 transition-shadow hover:shadow-md;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold;
+  }
+
+  .badge-verified {
+    @apply badge bg-blue-50 text-blue-600 border border-blue-100;
+  }
+
+  .badge-premier {
+    @apply badge bg-amber-50 text-amber-600 border border-amber-100;
+  }
+
+  /* Glassmorphism */
+  .glass {
+    @apply bg-white/80 backdrop-blur-md border-b border-surface-200/50;
+  }
+  
+  .glass-dark {
+    @apply bg-surface-900/80 backdrop-blur-md border-b border-surface-800/50;
+  }
+}
+
+/* Custom Scrollbar for sleek look */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-surface-300 rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-surface-400;
+}
+
+/* Hide scrollbar for horizontal scrolling feeds but keep functionality */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
