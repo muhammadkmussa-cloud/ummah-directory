@@ -17,23 +17,25 @@ def setup_db():
 @pytest.mark.asyncio
 async def test_verify_webhook_success_with_oob_verification():
     gateway = MpesaGateway()
-    payload = json.dumps({
-        "Body": {
-            "stkCallback": {
-                "MerchantRequestID": "29182-10001-1",
-                "CheckoutRequestID": "ws_CO_260520211000000000",
-                "ResultCode": 0,
-                "ResultDesc": "The service request is processed successfully.",
-                "CallbackMetadata": {
-                    "Item": [
-                        {"Name": "Amount", "Value": 1500},
-                        {"Name": "MpesaReceiptNumber", "Value": "NLJ7RT61SV"},
-                        {"Name": "PhoneNumber", "Value": 254712345678},
-                    ]
-                },
+    payload = json.dumps(
+        {
+            "Body": {
+                "stkCallback": {
+                    "MerchantRequestID": "29182-10001-1",
+                    "CheckoutRequestID": "ws_CO_260520211000000000",
+                    "ResultCode": 0,
+                    "ResultDesc": "The service request is processed successfully.",
+                    "CallbackMetadata": {
+                        "Item": [
+                            {"Name": "Amount", "Value": 1500},
+                            {"Name": "MpesaReceiptNumber", "Value": "NLJ7RT61SV"},
+                            {"Name": "PhoneNumber", "Value": 254712345678},
+                        ]
+                    },
+                }
             }
         }
-    }).encode("utf-8")
+    ).encode("utf-8")
 
     with patch.object(gateway, "query_status", new_callable=AsyncMock) as mock_query:
         mock_query.return_value = {
@@ -62,22 +64,24 @@ async def test_verify_webhook_success_with_oob_verification():
 async def test_verify_webhook_spoofed_payload_rejected_by_oob():
     """Test spoofed webhook claiming success is rejected when out-of-band query returns failure."""
     gateway = MpesaGateway()
-    payload = json.dumps({
-        "Body": {
-            "stkCallback": {
-                "CheckoutRequestID": "ws_CO_spoofed123",
-                "ResultCode": 0,
-                "ResultDesc": "The service request is processed successfully.",
-                "CallbackMetadata": {
-                    "Item": [
-                        {"Name": "Amount", "Value": 1000},
-                        {"Name": "MpesaReceiptNumber", "Value": "FAKE123456"},
-                        {"Name": "PhoneNumber", "Value": 254700000000},
-                    ]
-                },
+    payload = json.dumps(
+        {
+            "Body": {
+                "stkCallback": {
+                    "CheckoutRequestID": "ws_CO_spoofed123",
+                    "ResultCode": 0,
+                    "ResultDesc": "The service request is processed successfully.",
+                    "CallbackMetadata": {
+                        "Item": [
+                            {"Name": "Amount", "Value": 1000},
+                            {"Name": "MpesaReceiptNumber", "Value": "FAKE123456"},
+                            {"Name": "PhoneNumber", "Value": 254700000000},
+                        ]
+                    },
+                }
             }
         }
-    }).encode("utf-8")
+    ).encode("utf-8")
 
     with patch.object(gateway, "query_status", new_callable=AsyncMock) as mock_query:
         # Out-of-band query indicates the transaction was cancelled by user
@@ -100,15 +104,17 @@ async def test_verify_webhook_spoofed_payload_rejected_by_oob():
 async def test_verify_webhook_oob_query_exception_handled():
     """Test that an exception during out-of-band query yields a payment.failed event."""
     gateway = MpesaGateway()
-    payload = json.dumps({
-        "Body": {
-            "stkCallback": {
-                "CheckoutRequestID": "ws_CO_timeout999",
-                "ResultCode": 0,
-                "ResultDesc": "Success",
+    payload = json.dumps(
+        {
+            "Body": {
+                "stkCallback": {
+                    "CheckoutRequestID": "ws_CO_timeout999",
+                    "ResultCode": 0,
+                    "ResultDesc": "Success",
+                }
             }
         }
-    }).encode("utf-8")
+    ).encode("utf-8")
 
     with patch.object(gateway, "query_status", new_callable=AsyncMock) as mock_query:
         mock_query.side_effect = RuntimeError("Safaricom API timeout")
@@ -125,15 +131,17 @@ async def test_verify_webhook_oob_query_exception_handled():
 async def test_verify_webhook_callback_failed_status():
     """Test callback with non-zero ResultCode."""
     gateway = MpesaGateway()
-    payload = json.dumps({
-        "Body": {
-            "stkCallback": {
-                "CheckoutRequestID": "ws_CO_failed123",
-                "ResultCode": 1,
-                "ResultDesc": "Insufficient Funds",
+    payload = json.dumps(
+        {
+            "Body": {
+                "stkCallback": {
+                    "CheckoutRequestID": "ws_CO_failed123",
+                    "ResultCode": 1,
+                    "ResultDesc": "Insufficient Funds",
+                }
             }
         }
-    }).encode("utf-8")
+    ).encode("utf-8")
 
     with patch.object(gateway, "query_status", new_callable=AsyncMock) as mock_query:
         mock_query.return_value = {
@@ -153,14 +161,16 @@ async def test_verify_webhook_callback_failed_status():
 async def test_verify_webhook_security_token():
     """Test optional security token header validation."""
     gateway = MpesaGateway()
-    payload = json.dumps({
-        "Body": {
-            "stkCallback": {
-                "CheckoutRequestID": "ws_CO_token_test",
-                "ResultCode": 0,
+    payload = json.dumps(
+        {
+            "Body": {
+                "stkCallback": {
+                    "CheckoutRequestID": "ws_CO_token_test",
+                    "ResultCode": 0,
+                }
             }
         }
-    }).encode("utf-8")
+    ).encode("utf-8")
 
     with patch.object(settings, "mpesa_webhook_secret", "secret_token_123"):
         # 1. Invalid token header -> rejected

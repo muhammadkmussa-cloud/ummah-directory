@@ -11,8 +11,12 @@ from app.core.rate_limit import limiter
 from app.models.charity import Charity, CharityCampaign
 from app.models.user import User
 from app.schemas.charity import (
-    CampaignCreate, CampaignResponse, CampaignUpdate,
-    CharityCreate, CharityResponse, CharityUpdate,
+    CampaignCreate,
+    CampaignResponse,
+    CampaignUpdate,
+    CharityCreate,
+    CharityResponse,
+    CharityUpdate,
 )
 from app.schemas.common import MessageResponse, PaginatedResponse
 from app.services.audit_service import log_action
@@ -45,34 +49,52 @@ async def list_charities(
     result = await db.execute(query)
 
     return PaginatedResponse(
-        items=[{
-            "id": str(c.id), "name": c.name, "slug": c.slug,
-            "mission_statement": c.mission_statement,
-            "city": c.city, "country": c.country,
-            "logo_url": c.logo_url, "is_verified": c.is_verified,
-            "created_at": c.created_at,
-        } for c in result.scalars().all()],
-        total=total, page=page, size=size, pages=(total + size - 1) // size,
+        items=[
+            {
+                "id": str(c.id),
+                "name": c.name,
+                "slug": c.slug,
+                "mission_statement": c.mission_statement,
+                "city": c.city,
+                "country": c.country,
+                "logo_url": c.logo_url,
+                "is_verified": c.is_verified,
+                "created_at": c.created_at,
+            }
+            for c in result.scalars().all()
+        ],
+        total=total,
+        page=page,
+        size=size,
+        pages=(total + size - 1) // size,
     )
 
 
 @router.get("/{slug}", response_model=CharityResponse)
 async def get_charity(slug: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
-        select(Charity).where(Charity.slug == slug)
-        .options(selectinload(Charity.campaigns))
+        select(Charity).where(Charity.slug == slug).options(selectinload(Charity.campaigns))
     )
     c = result.scalar_one_or_none()
     if not c:
         raise HTTPException(status_code=404, detail="Charity not found")
     return CharityResponse(
-        id=str(c.id), name=c.name, slug=c.slug,
+        id=str(c.id),
+        name=c.name,
+        slug=c.slug,
         registration_number=c.registration_number,
-        description=c.description, mission_statement=c.mission_statement,
-        email=c.email, phone=c.phone, website=c.website,
-        address=c.address, city=c.city, country=c.country,
-        logo_url=c.logo_url, cover_image_url=c.cover_image_url,
-        is_verified=c.is_verified, status=c.status,
+        description=c.description,
+        mission_statement=c.mission_statement,
+        email=c.email,
+        phone=c.phone,
+        website=c.website,
+        address=c.address,
+        city=c.city,
+        country=c.country,
+        logo_url=c.logo_url,
+        cover_image_url=c.cover_image_url,
+        is_verified=c.is_verified,
+        status=c.status,
         created_at=c.created_at,
     )
 
@@ -98,24 +120,39 @@ async def create_charity(
         counter += 1
 
     charity = Charity(
-        name=req.name, slug=slug,
+        name=req.name,
+        slug=slug,
         registration_number=req.registration_number,
-        description=req.description, mission_statement=req.mission_statement,
-        email=req.email, phone=req.phone, website=req.website,
-        address=req.address, city=req.city, country=req.country or "Kenya",
-        primary_admin_id=user.id, status="pending",
+        description=req.description,
+        mission_statement=req.mission_statement,
+        email=req.email,
+        phone=req.phone,
+        website=req.website,
+        address=req.address,
+        city=req.city,
+        country=req.country or "Kenya",
+        primary_admin_id=user.id,
+        status="pending",
     )
     db.add(charity)
     await db.flush()
     await log_action(db, user.id, "charity.create", "charity", str(charity.id))
 
     return CharityResponse(
-        id=str(charity.id), name=charity.name, slug=charity.slug,
+        id=str(charity.id),
+        name=charity.name,
+        slug=charity.slug,
         registration_number=charity.registration_number,
-        description=charity.description, mission_statement=charity.mission_statement,
-        email=charity.email, phone=charity.phone, website=charity.website,
-        address=charity.address, city=charity.city, country=charity.country,
-        is_verified=charity.is_verified, status=charity.status,
+        description=charity.description,
+        mission_statement=charity.mission_statement,
+        email=charity.email,
+        phone=charity.phone,
+        website=charity.website,
+        address=charity.address,
+        city=charity.city,
+        country=charity.country,
+        is_verified=charity.is_verified,
+        status=charity.status,
         created_at=charity.created_at,
     )
 
@@ -142,13 +179,22 @@ async def update_charity(
 
     await log_action(db, user.id, "charity.update", "charity", id)
     return CharityResponse(
-        id=str(charity.id), name=charity.name, slug=charity.slug,
+        id=str(charity.id),
+        name=charity.name,
+        slug=charity.slug,
         registration_number=charity.registration_number,
-        description=charity.description, mission_statement=charity.mission_statement,
-        email=charity.email, phone=charity.phone, website=charity.website,
-        address=charity.address, city=charity.city, country=charity.country,
-        logo_url=charity.logo_url, cover_image_url=charity.cover_image_url,
-        is_verified=charity.is_verified, status=charity.status,
+        description=charity.description,
+        mission_statement=charity.mission_statement,
+        email=charity.email,
+        phone=charity.phone,
+        website=charity.website,
+        address=charity.address,
+        city=charity.city,
+        country=charity.country,
+        logo_url=charity.logo_url,
+        cover_image_url=charity.cover_image_url,
+        is_verified=charity.is_verified,
+        status=charity.status,
         created_at=charity.created_at,
     )
 
@@ -175,23 +221,35 @@ async def delete_charity(
 
 # --- Campaign CRUD ---
 
+
 @router.get("/{charity_id}/campaigns", response_model=list[CampaignResponse])
 async def list_campaigns(
     charity_id: str,
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
-        select(CharityCampaign).where(CharityCampaign.charity_id == charity_id)
+        select(CharityCampaign)
+        .where(CharityCampaign.charity_id == charity_id)
         .order_by(CharityCampaign.created_at.desc())
     )
     campaigns = result.scalars().all()
-    return [CampaignResponse(
-        id=str(c.id), title=c.title, description=c.description,
-        target_amount=str(c.target_amount), amount_raised=str(c.amount_raised),
-        currency=c.currency, deadline=c.deadline, status=c.status,
-        is_featured=c.is_featured, category=c.category,
-        charity_id=str(c.charity_id), created_at=c.created_at,
-    ) for c in campaigns]
+    return [
+        CampaignResponse(
+            id=str(c.id),
+            title=c.title,
+            description=c.description,
+            target_amount=str(c.target_amount),
+            amount_raised=str(c.amount_raised),
+            currency=c.currency,
+            deadline=c.deadline,
+            status=c.status,
+            is_featured=c.is_featured,
+            category=c.category,
+            charity_id=str(c.charity_id),
+            created_at=c.created_at,
+        )
+        for c in campaigns
+    ]
 
 
 @router.post("/{charity_id}/campaigns", response_model=CampaignResponse, status_code=201)
@@ -211,10 +269,13 @@ async def create_campaign(
         raise HTTPException(status_code=403, detail="Not your charity")
 
     campaign = CharityCampaign(
-        title=req.title, description=req.description,
+        title=req.title,
+        description=req.description,
         target_amount=Decimal(str(req.target_amount)),
-        currency=req.currency, deadline=req.deadline,
-        category=req.category, beneficiary_info=req.beneficiary_info,
+        currency=req.currency,
+        deadline=req.deadline,
+        category=req.category,
+        beneficiary_info=req.beneficiary_info,
         charity_id=charity_id,
     )
     db.add(campaign)
@@ -222,11 +283,18 @@ async def create_campaign(
     await log_action(db, user.id, "campaign.create", "campaign", str(campaign.id))
 
     return CampaignResponse(
-        id=str(campaign.id), title=campaign.title, description=campaign.description,
-        target_amount=str(campaign.target_amount), amount_raised=str(campaign.amount_raised),
-        currency=campaign.currency, deadline=campaign.deadline, status=campaign.status,
-        is_featured=campaign.is_featured, category=campaign.category,
-        charity_id=str(campaign.charity_id), created_at=campaign.created_at,
+        id=str(campaign.id),
+        title=campaign.title,
+        description=campaign.description,
+        target_amount=str(campaign.target_amount),
+        amount_raised=str(campaign.amount_raised),
+        currency=campaign.currency,
+        deadline=campaign.deadline,
+        status=campaign.status,
+        is_featured=campaign.is_featured,
+        category=campaign.category,
+        charity_id=str(campaign.charity_id),
+        created_at=campaign.created_at,
     )
 
 
@@ -261,11 +329,18 @@ async def update_campaign(
         setattr(campaign, field, value)
 
     return CampaignResponse(
-        id=str(campaign.id), title=campaign.title, description=campaign.description,
-        target_amount=str(campaign.target_amount), amount_raised=str(campaign.amount_raised),
-        currency=campaign.currency, deadline=campaign.deadline, status=campaign.status,
-        is_featured=campaign.is_featured, category=campaign.category,
-        charity_id=str(campaign.charity_id), created_at=campaign.created_at,
+        id=str(campaign.id),
+        title=campaign.title,
+        description=campaign.description,
+        target_amount=str(campaign.target_amount),
+        amount_raised=str(campaign.amount_raised),
+        currency=campaign.currency,
+        deadline=campaign.deadline,
+        status=campaign.status,
+        is_featured=campaign.is_featured,
+        category=campaign.category,
+        charity_id=str(campaign.charity_id),
+        created_at=campaign.created_at,
     )
 
 

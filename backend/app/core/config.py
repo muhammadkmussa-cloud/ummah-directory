@@ -66,6 +66,12 @@ class Settings(BaseSettings):
 
     sentry_dsn: str = ""
 
+    # Web Push (VAPID) — workflows.md #25 push notifications channel.
+    # Generate with: `npx web-push generate-vapid-keys` or `py_vapid` .
+    vapid_public_key: str = ""
+    vapid_private_key: str = ""
+    vapid_subject_email: str = ""
+
     allowed_hosts: str = "*"
 
     @property
@@ -88,9 +94,17 @@ class Settings(BaseSettings):
             errors.append("JWT_SECRET_KEY must be set to a secure random value")
         if not self.database_url:
             errors.append("DATABASE_URL must be set")
+        if self.app_env == "production" and (
+            "*" in self.allowed_host_list or not self.allowed_host_list
+        ):
+            errors.append(
+                "ALLOWED_HOSTS must be set to explicit host(s) in production "
+                "(the wildcard '*' disables TrustedHost validation)"
+            )
         if errors:
             raise RuntimeError(
-                "Configuration errors:\n  " + "\n  ".join(errors)
+                "Configuration errors:\n  "
+                + "\n  ".join(errors)
                 + "\n\nSet these values in your .env file or environment."
             )
 

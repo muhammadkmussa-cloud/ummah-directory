@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import uuid
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
-from typing import TYPE_CHECKING
 
 from app.models.base import BaseModelMixin
 from app.models.organization import Organization
@@ -27,5 +26,5 @@ class MosquePrayerSubscription(BaseModelMixin):
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
-    user: Mapped["User"] = relationship("User")
+    user: Mapped[User] = relationship("User")
     organization: Mapped[Organization] = relationship("Organization")

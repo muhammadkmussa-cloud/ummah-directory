@@ -1,4 +1,5 @@
-from app.schemas.common import MessageResponse
+from datetime import UTC
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,7 +8,7 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.notification import Notification, NotificationPreference
 from app.models.user import User
-from app.schemas.common import PaginatedResponse, MessageResponse
+from app.schemas.common import MessageResponse, PaginatedResponse
 from app.schemas.notification import NotificationPreferenceResponse, NotificationPreferenceUpdate
 
 router = APIRouter()
@@ -20,22 +21,36 @@ async def list_notifications(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(Notification).where(
-        Notification.user_id == user.id,
-        Notification.deleted_at.is_(None),
-    ).order_by(Notification.created_at.desc())
+    query = (
+        select(Notification)
+        .where(
+            Notification.user_id == user.id,
+            Notification.deleted_at.is_(None),
+        )
+        .order_by(Notification.created_at.desc())
+    )
 
     total = (await db.execute(select(func.count()).select_from(query.subquery()))).scalar() or 0
     query = query.offset((page - 1) * size).limit(size)
     result = await db.execute(query)
 
     return PaginatedResponse(
-        items=[{
-            "id": str(n.id), "type": n.type, "title": n.title,
-            "message": n.message, "data": n.data,
-            "is_read": n.is_read, "created_at": n.created_at,
-        } for n in result.scalars().all()],
-        total=total, page=page, size=size, pages=(total + size - 1) // size,
+        items=[
+            {
+                "id": str(n.id),
+                "type": n.type,
+                "title": n.title,
+                "message": n.message,
+                "data": n.data,
+                "is_read": n.is_read,
+                "created_at": n.created_at,
+            }
+            for n in result.scalars().all()
+        ],
+        total=total,
+        page=page,
+        size=size,
+        pages=(total + size - 1) // size,
     )
 
 
@@ -62,7 +77,7 @@ async def mark_all_read(
 ):
     await db.execute(
         update(Notification)
-        .where(Notification.user_id == user.id, Notification.is_read == False)
+        .where(Notification.user_id == user.id, Notification.is_read == False)  # noqa: E712
         .values(is_read=True)
     )
     return {"message": "All notifications marked as read"}
@@ -83,7 +98,8 @@ async def delete_notification(
 
     import uuid
     from datetime import datetime, timezone
-    notif.deleted_at = datetime.now(timezone.utc)
+
+    notif.deleted_at = datetime.now(UTC)
     return {"message": "Notification deleted"}
 
 

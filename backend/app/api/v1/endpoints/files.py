@@ -3,13 +3,14 @@ import uuid
 from pathlib import PurePosixPath
 
 import boto3
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from PIL import Image
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.dependencies import get_client_info, get_current_user
+from app.core.rate_limit import limiter
 from app.models.media import MediaFile
 from app.models.user import User
 from app.services.audit_service import log_action
@@ -17,7 +18,15 @@ from app.services.audit_service import log_action
 router = APIRouter()
 
 ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp", "application/pdf"}
-ALLOWED_RESOURCE_TYPES = {"business", "mosque", "charity", "education", "profile", "general", "verification"}
+ALLOWED_RESOURCE_TYPES = {
+    "business",
+    "mosque",
+    "charity",
+    "education",
+    "profile",
+    "general",
+    "verification",
+}
 MAX_SIZE = 10 * 1024 * 1024
 MAX_IMAGE_DIMENSION = 2048
 MAX_IMAGE_PIXELS = 50_000_000
@@ -98,7 +107,9 @@ async def upload_to_s3(file_bytes: bytes, filename: str, content_type: str) -> s
 
 
 @router.post("/upload")
+@limiter.limit("10/minute")
 async def upload_file(
+    request: Request,
     file: UploadFile = File(...),
     resource_type: str = Form("general"),
     resource_id: str | None = Form(None),
@@ -106,7 +117,10 @@ async def upload_file(
     db: AsyncSession = Depends(get_db),
 ):
     if resource_type not in ALLOWED_RESOURCE_TYPES:
-        raise HTTPException(status_code=400, detail=f"Invalid resource type. Must be one of: {ALLOWED_RESOURCE_TYPES}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid resource type. Must be one of: {ALLOWED_RESOURCE_TYPES}",
+        )
     if file.content_type not in ALLOWED_TYPES:
         raise HTTPException(status_code=400, detail=f"File type {file.content_type} not allowed")
 
@@ -129,7 +143,9 @@ async def upload_file(
             thumb_name = f"thumb_{file.filename or 'image'}"
             thumbnail_url = await upload_to_s3(thumbnail_bytes, thumb_name, "image/jpeg")
 
-    url = await upload_to_s3(contents, file.filename or "file", file.content_type or "application/octet-stream")
+    url = await upload_to_s3(
+        contents, file.filename or "file", file.content_type or "application/octet-stream"
+    )
 
     media = MediaFile(
         file_type="image" if is_image else "document",
@@ -144,7 +160,9 @@ async def upload_file(
     db.add(media)
     await db.flush()
     ip, ua = get_client_info(None)
-    await log_action(db, user.id, "file.upload", "media", str(media.id), ip_address=ip, user_agent=ua)
+    await log_action(
+        db, user.id, "file.upload", "media", str(media.id), ip_address=ip, user_agent=ua
+    )
 
     return {
         "id": str(media.id),

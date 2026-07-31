@@ -1,6 +1,6 @@
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from itsdangerous import URLSafeTimedSerializer
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,12 +10,12 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.core.security import decode_token, hash_password, verify_password
-from app.models.organization import Organization
 from app.models.business import OwnershipClaim
-from app.models.event import SavedEvent
 from app.models.donation import Donation
+from app.models.event import SavedEvent
 from app.models.favorite import Favorite
 from app.models.notification import Notification
+from app.models.organization import Organization
 from app.models.review import Review
 from app.models.user import User
 from app.schemas.common import MessageResponse
@@ -136,12 +136,8 @@ async def user_dashboard(
 ):
     from sqlalchemy import func
 
-    fav_count = await db.execute(
-        select(func.count(Favorite.id)).where(Favorite.user_id == user.id)
-    )
-    review_count = await db.execute(
-        select(func.count(Review.id)).where(Review.user_id == user.id)
-    )
+    fav_count = await db.execute(select(func.count(Favorite.id)).where(Favorite.user_id == user.id))
+    review_count = await db.execute(select(func.count(Review.id)).where(Review.user_id == user.id))
     donation_count = await db.execute(
         select(func.count(Donation.id)).where(Donation.donor_id == user.id)
     )
@@ -150,7 +146,8 @@ async def user_dashboard(
     )
     unread_notif = await db.execute(
         select(func.count(Notification.id)).where(
-            Notification.user_id == user.id, Notification.is_read == False
+            Notification.user_id == user.id,
+            Notification.is_read == False,  # noqa: E712
         )
     )
     claim_count = await db.execute(
@@ -167,8 +164,10 @@ async def user_dashboard(
         )
     )
 
-    from app.models.ad_campaign import AdCampaign
     from sqlalchemy import or_
+
+    from app.models.ad_campaign import AdCampaign
+
     org_ids_subq = select(Organization.id).where(Organization.owner_id == user.id)
     active_campaign_count = await db.execute(
         select(func.count(AdCampaign.id)).where(
@@ -185,16 +184,22 @@ async def user_dashboard(
     )
 
     recent_notifs = await db.execute(
-        select(Notification).where(Notification.user_id == user.id)
-        .order_by(Notification.created_at.desc()).limit(5)
+        select(Notification)
+        .where(Notification.user_id == user.id)
+        .order_by(Notification.created_at.desc())
+        .limit(5)
     )
     recent_donations = await db.execute(
-        select(Donation).where(Donation.donor_id == user.id)
-        .order_by(Donation.created_at.desc()).limit(5)
+        select(Donation)
+        .where(Donation.donor_id == user.id)
+        .order_by(Donation.created_at.desc())
+        .limit(5)
     )
     user_organizations = await db.execute(
-        select(Organization).where(Organization.owner_id == user.id)
-        .order_by(Organization.created_at.desc()).limit(10)
+        select(Organization)
+        .where(Organization.owner_id == user.id)
+        .order_by(Organization.created_at.desc())
+        .limit(10)
     )
 
     return {
@@ -227,24 +232,32 @@ async def user_dashboard(
         },
         "organizations": [
             {
-                "id": str(o.id), "name": o.name, "slug": o.slug,
-                "status": o.status, "is_verified": o.is_verified,
+                "id": str(o.id),
+                "name": o.name,
+                "slug": o.slug,
+                "status": o.status,
+                "is_verified": o.is_verified,
                 "organization_type": o.organization_type,
             }
             for o in user_organizations.scalars().all()
         ],
         "notifications": [
             {
-                "id": str(n.id), "type": n.type, "title": n.title,
-                "message": n.message, "is_read": n.is_read,
+                "id": str(n.id),
+                "type": n.type,
+                "title": n.title,
+                "message": n.message,
+                "is_read": n.is_read,
                 "created_at": n.created_at,
             }
             for n in recent_notifs.scalars().all()
         ],
         "recent_donations": [
             {
-                "id": str(d.id), "amount": str(d.amount),
-                "currency": d.currency, "status": d.status,
+                "id": str(d.id),
+                "amount": str(d.amount),
+                "currency": d.currency,
+                "status": d.status,
                 "receipt_number": d.receipt_number,
                 "created_at": d.created_at,
             }
@@ -270,8 +283,10 @@ async def get_active_sessions(
     user: User = Depends(get_current_user),
 ):
     try:
-        from app.core.cache import get_redis
         import json
+
+        from app.core.cache import get_redis
+
         redis = await get_redis()
         sessions_key = f"active_sessions:{user.id}"
         raw = await redis.lrange(sessions_key, 0, -1)
@@ -282,13 +297,15 @@ async def get_active_sessions(
             except (json.JSONDecodeError, TypeError):
                 continue
             is_current = False
-            sessions.append({
-                "jti": data.get("jti"),
-                "ip_address": data.get("ip"),
-                "user_agent": data.get("user_agent"),
-                "logged_in_at": data.get("logged_in_at"),
-                "is_current": is_current,
-            })
+            sessions.append(
+                {
+                    "jti": data.get("jti"),
+                    "ip_address": data.get("ip"),
+                    "user_agent": data.get("user_agent"),
+                    "logged_in_at": data.get("logged_in_at"),
+                    "is_current": is_current,
+                }
+            )
         return {"sessions": sessions}
     except Exception:
         return {"sessions": []}
@@ -301,8 +318,10 @@ async def logout_all_sessions(
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        from app.core.cache import get_redis
         import json
+
+        from app.core.cache import get_redis
+
         redis = await get_redis()
         sessions_key = f"active_sessions:{user.id}"
         raw = await redis.lrange(sessions_key, 0, -1)
@@ -310,6 +329,7 @@ async def logout_all_sessions(
         auth = request.headers.get("Authorization", "") if request else ""
         if auth.startswith("Bearer "):
             from app.core.security import decode_token
+
             payload = decode_token(auth[7:])
             if payload:
                 current_jti = payload.get("jti")
@@ -319,8 +339,10 @@ async def logout_all_sessions(
                 data = json.loads(s)
                 jti = data.get("jti")
                 if jti and jti != current_jti:
-                    from app.services.token_service import blacklist_token
                     from datetime import timedelta
+
+                    from app.services.token_service import blacklist_token
+
                     await blacklist_token(jti, timedelta(hours=24))
             except (json.JSONDecodeError, TypeError):
                 pass
@@ -337,8 +359,8 @@ async def logout_all_sessions(
 
         await log_action(db, user.id, "user.logout_all_sessions", "user", str(user.id))
         return {"message": "All other sessions logged out"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Failed to log out sessions")
+    except Exception:
+        raise HTTPException(status_code=500, detail="Failed to log out sessions") from None
 
 
 @router.get("/me/login-history")
@@ -350,26 +372,34 @@ async def get_login_history(
 ):
     from app.models.audit import AuditLog
 
-    base_q = select(AuditLog).where(
-        AuditLog.user_id == user.id,
-        AuditLog.action == "user.login",
-    ).order_by(AuditLog.created_at.desc())
+    base_q = (
+        select(AuditLog)
+        .where(
+            AuditLog.user_id == user.id,
+            AuditLog.action == "user.login",
+        )
+        .order_by(AuditLog.created_at.desc())
+    )
 
     total = (await db.execute(select(func.count()).select_from(base_q.subquery()))).scalar() or 0
     result = await db.execute(base_q.offset((page - 1) * size).limit(size))
 
     return {
-        "items": [{
-            "id": str(log.id),
-            "ip_address": log.ip_address,
-            "user_agent": log.user_agent,
-            "created_at": log.created_at,
-        } for log in result.scalars().all()],
+        "items": [
+            {
+                "id": str(log.id),
+                "ip_address": log.ip_address,
+                "user_agent": log.user_agent,
+                "created_at": log.created_at,
+            }
+            for log in result.scalars().all()
+        ],
         "total": total,
         "page": page,
         "size": size,
         "pages": (total + size - 1) // size if total > 0 else 0,
     }
+
 
 @router.get("/me/saved-events")
 async def get_saved_events(
@@ -377,25 +407,28 @@ async def get_saved_events(
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
-        select(SavedEvent).where(SavedEvent.user_id == user.id)
+        select(SavedEvent)
+        .where(SavedEvent.user_id == user.id)
         .options(selectinload(SavedEvent.event))
         .order_by(SavedEvent.created_at.desc())
     )
     items = []
     for s in result.scalars().all():
         e = s.event
-        items.append({
-            "id": str(s.id),
-            "event_id": str(e.id),
-            "event_title": e.title,
-            "event_slug": e.slug,
-            "event_date": e.event_date,
-            "event_time": e.event_time,
-            "venue": e.venue,
-            "cover_image_url": e.cover_image_url,
-            "category": e.category,
-            "created_at": s.created_at,
-        })
+        items.append(
+            {
+                "id": str(s.id),
+                "event_id": str(e.id),
+                "event_title": e.title,
+                "event_slug": e.slug,
+                "event_date": e.event_date,
+                "event_time": e.event_time,
+                "venue": e.venue,
+                "cover_image_url": e.cover_image_url,
+                "category": e.category,
+                "created_at": s.created_at,
+            }
+        )
     return {"items": items}
 
 
@@ -405,17 +438,15 @@ async def get_my_organizations(
     db: AsyncSession = Depends(get_db),
 ):
     from app.models.organization import OrganizationManager
-    
+
     # Organizations owned by the user
-    owned = await db.execute(
-        select(Organization).where(Organization.owner_id == user.id)
-    )
-    
+    owned = await db.execute(select(Organization).where(Organization.owner_id == user.id))
+
     # Organizations managed by the user
     managed = await db.execute(
         select(Organization).join(OrganizationManager).where(OrganizationManager.user_id == user.id)
     )
-    
+
     def format_org(o, role="owner"):
         return {
             "id": str(o.id),
@@ -425,12 +456,12 @@ async def get_my_organizations(
             "logo_url": o.logo_url,
             "is_verified": o.is_verified,
             "status": o.status,
-            "role": role
+            "role": role,
         }
-        
+
     orgs = [format_org(o, "owner") for o in owned.scalars().all()]
     orgs.extend([format_org(o, "manager") for o in managed.scalars().all()])
-    
+
     # Deduplicate in case owner is also a manager somehow
     seen = set()
     result = []
@@ -438,5 +469,5 @@ async def get_my_organizations(
         if org["id"] not in seen:
             seen.add(org["id"])
             result.append(org)
-            
+
     return {"organizations": result}

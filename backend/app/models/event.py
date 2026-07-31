@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
-from typing import TYPE_CHECKING
 
 from app.models.base import BaseModelMixin
 from app.models.organization import Organization
@@ -37,11 +36,15 @@ class Event(BaseModelMixin):
     organization_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=True
     )
-    
+
     organizer_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
 
-    organization: Mapped[Organization | None] = relationship("Organization", back_populates="events")
-    saved_by: Mapped[list["SavedEvent"]] = relationship("SavedEvent", back_populates="event", cascade="all, delete-orphan")
+    organization: Mapped[Organization | None] = relationship(
+        "Organization", back_populates="events"
+    )
+    saved_by: Mapped[list[SavedEvent]] = relationship(
+        "SavedEvent", back_populates="event", cascade="all, delete-orphan"
+    )
 
 
 class SavedEvent(BaseModelMixin):
@@ -54,6 +57,5 @@ class SavedEvent(BaseModelMixin):
         UUID(as_uuid=True), ForeignKey("events.id", ondelete="CASCADE"), nullable=False
     )
 
-    user: Mapped["User"] = relationship("User", back_populates="saved_events")
+    user: Mapped[User] = relationship("User", back_populates="saved_events")
     event: Mapped[Event] = relationship("Event", back_populates="saved_by")
-

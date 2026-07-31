@@ -33,8 +33,10 @@ async def list_institutions(
         query = query.where(EducationalInstitution.city.ilike(f"%{city}%"))
     if search:
         query = query.where(
-            or_(EducationalInstitution.name.ilike(f"%{search}%"),
-                EducationalInstitution.description.ilike(f"%{search}%"))
+            or_(
+                EducationalInstitution.name.ilike(f"%{search}%"),
+                EducationalInstitution.description.ilike(f"%{search}%"),
+            )
         )
     query = query.order_by(EducationalInstitution.created_at.desc())
 
@@ -43,15 +45,27 @@ async def list_institutions(
     result = await db.execute(query)
 
     return PaginatedResponse(
-        items=[{
-            "id": str(e.id), "name": e.name, "slug": e.slug,
-            "institution_type": e.institution_type, "description": e.description,
-            "curriculum": e.curriculum, "city": e.city, "country": e.country,
-            "logo_url": e.logo_url, "is_verified": e.is_verified,
-            "has_quran_program": e.has_quran_program,
-            "created_at": e.created_at,
-        } for e in result.scalars().all()],
-        total=total, page=page, size=size, pages=(total + size - 1) // size,
+        items=[
+            {
+                "id": str(e.id),
+                "name": e.name,
+                "slug": e.slug,
+                "institution_type": e.institution_type,
+                "description": e.description,
+                "curriculum": e.curriculum,
+                "city": e.city,
+                "country": e.country,
+                "logo_url": e.logo_url,
+                "is_verified": e.is_verified,
+                "has_quran_program": e.has_quran_program,
+                "created_at": e.created_at,
+            }
+            for e in result.scalars().all()
+        ],
+        total=total,
+        page=page,
+        size=size,
+        pages=(total + size - 1) // size,
     )
 
 
@@ -64,13 +78,24 @@ async def get_institution(slug: str, db: AsyncSession = Depends(get_db)):
     if not e:
         raise HTTPException(status_code=404, detail="Institution not found")
     return EducationResponse(
-        id=str(e.id), name=e.name, slug=e.slug,
-        institution_type=e.institution_type, description=e.description,
-        curriculum=e.curriculum, email=e.email, phone=e.phone,
-        website=e.website, address=e.address, city=e.city, country=e.country,
-        latitude=e.latitude, longitude=e.longitude,
-        logo_url=e.logo_url, cover_image_url=e.cover_image_url,
-        is_verified=e.is_verified, status=e.status,
+        id=str(e.id),
+        name=e.name,
+        slug=e.slug,
+        institution_type=e.institution_type,
+        description=e.description,
+        curriculum=e.curriculum,
+        email=e.email,
+        phone=e.phone,
+        website=e.website,
+        address=e.address,
+        city=e.city,
+        country=e.country,
+        latitude=e.latitude,
+        longitude=e.longitude,
+        logo_url=e.logo_url,
+        cover_image_url=e.cover_image_url,
+        is_verified=e.is_verified,
+        status=e.status,
         has_girls_section=e.has_girls_section,
         has_boarding=e.has_boarding,
         has_quran_program=e.has_quran_program,
@@ -90,35 +115,55 @@ async def create_institution(
     slug = base_slug
     counter = 1
     while True:
-        existing = await db.execute(select(EducationalInstitution).where(EducationalInstitution.slug == slug))
+        existing = await db.execute(
+            select(EducationalInstitution).where(EducationalInstitution.slug == slug)
+        )
         if not existing.scalar_one_or_none():
             break
         slug = f"{base_slug}-{counter}"
         counter += 1
 
     inst = EducationalInstitution(
-        name=req.name, slug=slug, institution_type=req.institution_type,
-        description=req.description, curriculum=req.curriculum,
-        email=req.email, phone=req.phone, website=req.website,
-        address=req.address, city=req.city, country=req.country or "Kenya",
-        latitude=req.latitude, longitude=req.longitude,
+        name=req.name,
+        slug=slug,
+        institution_type=req.institution_type,
+        description=req.description,
+        curriculum=req.curriculum,
+        email=req.email,
+        phone=req.phone,
+        website=req.website,
+        address=req.address,
+        city=req.city,
+        country=req.country or "Kenya",
+        latitude=req.latitude,
+        longitude=req.longitude,
         has_girls_section=req.has_girls_section,
         has_boarding=req.has_boarding,
         has_quran_program=req.has_quran_program,
-        primary_admin_id=user.id, status="pending",
+        primary_admin_id=user.id,
+        status="pending",
     )
     db.add(inst)
     await db.flush()
     await log_action(db, user.id, "education.create", "education", str(inst.id))
 
     return EducationResponse(
-        id=str(inst.id), name=inst.name, slug=inst.slug,
+        id=str(inst.id),
+        name=inst.name,
+        slug=inst.slug,
         institution_type=inst.institution_type,
-        description=inst.description, curriculum=inst.curriculum,
-        email=inst.email, phone=inst.phone, website=inst.website,
-        address=inst.address, city=inst.city, country=inst.country,
-        latitude=inst.latitude, longitude=inst.longitude,
-        is_verified=inst.is_verified, status=inst.status,
+        description=inst.description,
+        curriculum=inst.curriculum,
+        email=inst.email,
+        phone=inst.phone,
+        website=inst.website,
+        address=inst.address,
+        city=inst.city,
+        country=inst.country,
+        latitude=inst.latitude,
+        longitude=inst.longitude,
+        is_verified=inst.is_verified,
+        status=inst.status,
         has_girls_section=inst.has_girls_section,
         has_boarding=inst.has_boarding,
         has_quran_program=inst.has_quran_program,
@@ -146,14 +191,24 @@ async def update_institution(
         setattr(inst, field, value)
     await log_action(db, user.id, "education.update", "education", id)
     return EducationResponse(
-        id=str(inst.id), name=inst.name, slug=inst.slug,
+        id=str(inst.id),
+        name=inst.name,
+        slug=inst.slug,
         institution_type=inst.institution_type,
-        description=inst.description, curriculum=inst.curriculum,
-        email=inst.email, phone=inst.phone, website=inst.website,
-        address=inst.address, city=inst.city, country=inst.country,
-        latitude=inst.latitude, longitude=inst.longitude,
-        logo_url=inst.logo_url, cover_image_url=inst.cover_image_url,
-        is_verified=inst.is_verified, status=inst.status,
+        description=inst.description,
+        curriculum=inst.curriculum,
+        email=inst.email,
+        phone=inst.phone,
+        website=inst.website,
+        address=inst.address,
+        city=inst.city,
+        country=inst.country,
+        latitude=inst.latitude,
+        longitude=inst.longitude,
+        logo_url=inst.logo_url,
+        cover_image_url=inst.cover_image_url,
+        is_verified=inst.is_verified,
+        status=inst.status,
         has_girls_section=inst.has_girls_section,
         has_boarding=inst.has_boarding,
         has_quran_program=inst.has_quran_program,

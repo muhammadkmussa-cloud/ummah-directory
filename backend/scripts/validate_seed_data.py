@@ -10,6 +10,7 @@ Uses httpx AsyncClient with ASGI transport to test:
 
 Generates TEST_ACCOUNTS.md with results.
 """
+
 import asyncio
 import os
 import sys
@@ -18,46 +19,177 @@ from datetime import datetime
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from httpx import AsyncClient, ASGITransport
-from app.main import app
-from app.core.database import async_session_factory
-from app.models.organization import Organization
-from app.models.user import User, Role
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
+
+from app.core.database import async_session_factory
+from app.main import app
+from app.models.organization import Organization
+from app.models.user import Role, User
 
 BASE_URL = "http://test"
 API_PREFIX = "/api/v1"
 
 ACCOUNTS = [
-    {"email": "admin@ummadirectory.test", "password": "Admin@123456", "role": "super_admin", "name": "Super Administrator"},
-    {"email": "moderator1@ummadirectory.test", "password": "Moderator@123", "role": "moderator", "name": "Aisha Mohammed"},
-    {"email": "moderator2@ummadirectory.test", "password": "Moderator@123", "role": "moderator", "name": "Omar Hassan"},
-    {"email": "moderator3@ummadirectory.test", "password": "Moderator@123", "role": "moderator", "name": "Fatima Ali"},
-    {"email": "moderator4@ummadirectory.test", "password": "Moderator@123", "role": "moderator", "name": "Hassan Ibrahim"},
-    {"email": "moderator5@ummadirectory.test", "password": "Moderator@123", "role": "moderator", "name": "Zainab Abdullah"},
-    {"email": "user1@ummadirectory.test", "password": "User@123", "role": "registered_user", "name": "Khalid Abdi"},
-    {"email": "user2@ummadirectory.test", "password": "User@123", "role": "registered_user", "name": "Amina Omar"},
-    {"email": "user3@ummadirectory.test", "password": "User@123", "role": "registered_user", "name": "Yusuf Mohamed"},
-    {"email": "user4@ummadirectory.test", "password": "User@123", "role": "registered_user", "name": "Maryam Hassan"},
-    {"email": "user5@ummadirectory.test", "password": "User@123", "role": "registered_user", "name": "Ibrahim Musa"},
-    {"email": "user6@ummadirectory.test", "password": "User@123", "role": "registered_user", "name": "Halima Said"},
-    {"email": "user7@ummadirectory.test", "password": "User@123", "role": "registered_user", "name": "Abdul Rahman"},
-    {"email": "user8@ummadirectory.test", "password": "User@123", "role": "registered_user", "name": "Safiya Ahmed"},
-    {"email": "user9@ummadirectory.test", "password": "User@123", "role": "registered_user", "name": "Musa Kamau"},
-    {"email": "user10@ummadirectory.test", "password": "User@123", "role": "registered_user", "name": "Layla Hussein"},
+    {
+        "email": "admin@ummadirectory.test",
+        "password": "Admin@123456",
+        "role": "super_admin",
+        "name": "Super Administrator",
+    },
+    {
+        "email": "moderator1@ummadirectory.test",
+        "password": "Moderator@123",
+        "role": "moderator",
+        "name": "Aisha Mohammed",
+    },
+    {
+        "email": "moderator2@ummadirectory.test",
+        "password": "Moderator@123",
+        "role": "moderator",
+        "name": "Omar Hassan",
+    },
+    {
+        "email": "moderator3@ummadirectory.test",
+        "password": "Moderator@123",
+        "role": "moderator",
+        "name": "Fatima Ali",
+    },
+    {
+        "email": "moderator4@ummadirectory.test",
+        "password": "Moderator@123",
+        "role": "moderator",
+        "name": "Hassan Ibrahim",
+    },
+    {
+        "email": "moderator5@ummadirectory.test",
+        "password": "Moderator@123",
+        "role": "moderator",
+        "name": "Zainab Abdullah",
+    },
+    {
+        "email": "user1@ummadirectory.test",
+        "password": "User@123",
+        "role": "registered_user",
+        "name": "Khalid Abdi",
+    },
+    {
+        "email": "user2@ummadirectory.test",
+        "password": "User@123",
+        "role": "registered_user",
+        "name": "Amina Omar",
+    },
+    {
+        "email": "user3@ummadirectory.test",
+        "password": "User@123",
+        "role": "registered_user",
+        "name": "Yusuf Mohamed",
+    },
+    {
+        "email": "user4@ummadirectory.test",
+        "password": "User@123",
+        "role": "registered_user",
+        "name": "Maryam Hassan",
+    },
+    {
+        "email": "user5@ummadirectory.test",
+        "password": "User@123",
+        "role": "registered_user",
+        "name": "Ibrahim Musa",
+    },
+    {
+        "email": "user6@ummadirectory.test",
+        "password": "User@123",
+        "role": "registered_user",
+        "name": "Halima Said",
+    },
+    {
+        "email": "user7@ummadirectory.test",
+        "password": "User@123",
+        "role": "registered_user",
+        "name": "Abdul Rahman",
+    },
+    {
+        "email": "user8@ummadirectory.test",
+        "password": "User@123",
+        "role": "registered_user",
+        "name": "Safiya Ahmed",
+    },
+    {
+        "email": "user9@ummadirectory.test",
+        "password": "User@123",
+        "role": "registered_user",
+        "name": "Musa Kamau",
+    },
+    {
+        "email": "user10@ummadirectory.test",
+        "password": "User@123",
+        "role": "registered_user",
+        "name": "Layla Hussein",
+    },
 ]
 
 ORGANIZATIONS = [
-    {"name": "Al-Mina Halal Restaurant & Grill", "type": "business", "status": "pending", "owner": "user1@ummadirectory.test"},
-    {"name": "Al-Nur Central Mosque", "type": "mosque", "status": "approved", "owner": "user2@ummadirectory.test"},
-    {"name": "Al-Hikma Islamic Academy", "type": "educational_institution", "status": "pending", "owner": "user3@ummadirectory.test"},
-    {"name": "Rahma Trust Foundation", "type": "charity", "status": "approved", "owner": "user4@ummadirectory.test"},
-    {"name": "Ummah Development Network", "type": "charity", "status": "pending", "owner": "user5@ummadirectory.test"},
-    {"name": "Al-Shifa Medical Center", "type": "business", "status": "approved", "owner": "user6@ummadirectory.test"},
-    {"name": "Qasr Al-Salam Boutique Hotel", "type": "business", "status": "pending", "owner": "user7@ummadirectory.test"},
-    {"name": "Layali Restaurant & Cafe", "type": "business", "status": "approved", "owner": "user8@ummadirectory.test"},
-    {"name": "Al-Barakah Health Clinic", "type": "business", "status": "pending", "owner": "user9@ummadirectory.test"},
-    {"name": "Pamoja Community Center", "type": "business", "status": "approved", "owner": "user10@ummadirectory.test"},
+    {
+        "name": "Al-Mina Halal Restaurant & Grill",
+        "type": "business",
+        "status": "pending",
+        "owner": "user1@ummadirectory.test",
+    },
+    {
+        "name": "Al-Nur Central Mosque",
+        "type": "mosque",
+        "status": "approved",
+        "owner": "user2@ummadirectory.test",
+    },
+    {
+        "name": "Al-Hikma Islamic Academy",
+        "type": "educational_institution",
+        "status": "pending",
+        "owner": "user3@ummadirectory.test",
+    },
+    {
+        "name": "Rahma Trust Foundation",
+        "type": "charity",
+        "status": "approved",
+        "owner": "user4@ummadirectory.test",
+    },
+    {
+        "name": "Ummah Development Network",
+        "type": "charity",
+        "status": "pending",
+        "owner": "user5@ummadirectory.test",
+    },
+    {
+        "name": "Al-Shifa Medical Center",
+        "type": "business",
+        "status": "approved",
+        "owner": "user6@ummadirectory.test",
+    },
+    {
+        "name": "Qasr Al-Salam Boutique Hotel",
+        "type": "business",
+        "status": "pending",
+        "owner": "user7@ummadirectory.test",
+    },
+    {
+        "name": "Layali Restaurant & Cafe",
+        "type": "business",
+        "status": "approved",
+        "owner": "user8@ummadirectory.test",
+    },
+    {
+        "name": "Al-Barakah Health Clinic",
+        "type": "business",
+        "status": "pending",
+        "owner": "user9@ummadirectory.test",
+    },
+    {
+        "name": "Pamoja Community Center",
+        "type": "business",
+        "status": "approved",
+        "owner": "user10@ummadirectory.test",
+    },
 ]
 
 results = {"passed": 0, "failed": 0, "skipped": 0, "details": []}
@@ -76,9 +208,9 @@ def record(test_name, status, detail=""):
 
 
 async def login(client, email, password):
-    resp = await client.post(f"{API_PREFIX}/auth/login", json={
-        "email": email, "password": password
-    })
+    resp = await client.post(
+        f"{API_PREFIX}/auth/login", json={"email": email, "password": password}
+    )
     return resp
 
 
@@ -91,7 +223,7 @@ async def test_authentication(client):
             has_access = data.get("access_token") is not None
             has_refresh = data.get("refresh_token") is not None
             user_data = data.get("user", {})
-            role_matches = user_data.get("role") == acct["role"]
+            _role_matches = user_data.get("role") == acct["role"]
 
             if has_access and has_refresh:
                 record(f"Login: {acct['email']}", "PASS")
@@ -99,13 +231,15 @@ async def test_authentication(client):
                 acct["refresh_token"] = data["refresh_token"]
 
                 # Test refresh
-                refresh_resp = await client.post(f"{API_PREFIX}/auth/refresh", json={
-                    "refresh_token": data["refresh_token"]
-                })
+                refresh_resp = await client.post(
+                    f"{API_PREFIX}/auth/refresh", json={"refresh_token": data["refresh_token"]}
+                )
                 if refresh_resp.status_code == 200:
                     record(f"Refresh: {acct['email']}", "PASS")
                 else:
-                    record(f"Refresh: {acct['email']}", "FAIL", f"Status {refresh_resp.status_code}")
+                    record(
+                        f"Refresh: {acct['email']}", "FAIL", f"Status {refresh_resp.status_code}"
+                    )
 
                 # Test logout
                 headers = {"Authorization": f"Bearer {data['access_token']}"}
@@ -122,7 +256,9 @@ async def test_authentication(client):
             else:
                 record(f"Login: {acct['email']}", "FAIL", "Missing tokens or role mismatch")
         else:
-            record(f"Login: {acct['email']}", "FAIL", f"Status {resp.status_code}: {resp.text[:100]}")
+            record(
+                f"Login: {acct['email']}", "FAIL", f"Status {resp.status_code}: {resp.text[:100]}"
+            )
 
 
 async def test_dashboard_access(client):
@@ -140,7 +276,11 @@ async def test_dashboard_access(client):
             if resp.status_code == 403:
                 record(f"Dashboard: {acct['email']} (blocked for user)", "PASS")
             else:
-                record(f"Dashboard: {acct['email']} (should be blocked)", "FAIL", f"Got {resp.status_code}")
+                record(
+                    f"Dashboard: {acct['email']} (should be blocked)",
+                    "FAIL",
+                    f"Got {resp.status_code}",
+                )
         elif acct["role"] in ("super_admin", "moderator"):
             if resp.status_code == 200:
                 data = resp.json()
@@ -156,9 +296,17 @@ async def test_rbac_permissions(client):
     print("\n--- RBAC Permission Testing ---")
 
     # Super admin tests
-    admin_token = next(a["access_token"] for a in ACCOUNTS if a["role"] == "super_admin" and "access_token" in a)
-    mod1_token = next(a["access_token"] for a in ACCOUNTS if a["role"] == "moderator" and "access_token" in a)
-    user1_token = next(a["access_token"] for a in ACCOUNTS if a["role"] == "registered_user" and "access_token" in a)
+    admin_token = next(
+        a["access_token"] for a in ACCOUNTS if a["role"] == "super_admin" and "access_token" in a
+    )
+    mod1_token = next(
+        a["access_token"] for a in ACCOUNTS if a["role"] == "moderator" and "access_token" in a
+    )
+    user1_token = next(
+        a["access_token"]
+        for a in ACCOUNTS
+        if a["role"] == "registered_user" and "access_token" in a
+    )
 
     admin_headers = {"Authorization": f"Bearer {admin_token}"}
     mod_headers = {"Authorization": f"Bearer {mod1_token}"}
@@ -184,9 +332,19 @@ async def test_rbac_permissions(client):
     mod_cannot = [
         ("List users", "GET", f"{API_PREFIX}/admin/users", 403),
         ("View audit logs", "GET", f"{API_PREFIX}/admin/audit-logs", 403),
-        ("Delete categories", "DELETE", f"{API_PREFIX}/admin/categories/00000000-0000-0000-0000-000000000001", 403),
+        (
+            "Delete categories",
+            "DELETE",
+            f"{API_PREFIX}/admin/categories/00000000-0000-0000-0000-000000000001",
+            403,
+        ),
         ("View payment providers", "GET", f"{API_PREFIX}/admin/payment-providers", 403),
-        ("Delete CMS pages", "DELETE", f"{API_PREFIX}/admin/cms-pages/00000000-0000-0000-0000-000000000001", 403),
+        (
+            "Delete CMS pages",
+            "DELETE",
+            f"{API_PREFIX}/admin/cms-pages/00000000-0000-0000-0000-000000000001",
+            403,
+        ),
     ]
     for name, method, url, expected in mod_cannot:
         resp = await client.request(method, url, headers=mod_headers)
@@ -233,7 +391,15 @@ async def test_organization_workflow(client):
     for org_def in ORGANIZATIONS:
         org = org_map.get(org_def["name"])
         if org:
-            db_orgs_data.append({"id": str(org.id), "name": org.name, "slug": org.slug, "status": org.status, "type": org.organization_type})
+            db_orgs_data.append(
+                {
+                    "id": str(org.id),
+                    "name": org.name,
+                    "slug": org.slug,
+                    "status": org.status,
+                    "type": org.organization_type,
+                }
+            )
         else:
             record(f"Find org: {org_def['name']}", "FAIL", "Not found in database")
 
@@ -246,15 +412,15 @@ async def test_organization_workflow(client):
     resp = await client.get(f"{API_PREFIX}/admin/organizations", headers=admin_headers)
     if resp.status_code == 200:
         orgs_list = resp.json()
-        record(f"Admin list organizations", "PASS", f"Found {len(orgs_list)} orgs")
+        record("Admin list organizations", "PASS", f"Found {len(orgs_list)} orgs")
     else:
-        record(f"Admin list organizations", "FAIL", f"Status {resp.status_code}")
+        record("Admin list organizations", "FAIL", f"Status {resp.status_code}")
 
     # Test: moderator can view pending organizations
     resp = await client.get(f"{API_PREFIX}/admin/organizations/pending", headers=mod_headers)
     if resp.status_code == 200:
         pending = resp.json()
-        record(f"Moderator view pending orgs", "PASS", f"Found {len(pending)} pending")
+        record("Moderator view pending orgs", "PASS", f"Found {len(pending)} pending")
 
     # Test: approve a pending organization
     pending_orgs = [o for o in db_orgs_data if o["status"] == "pending"]
@@ -267,7 +433,11 @@ async def test_organization_workflow(client):
         if resp.status_code == 200:
             record(f"Moderator approve org: {target['name']}", "PASS")
         else:
-            record(f"Moderator approve org: {target['name']}", "FAIL", f"Status {resp.status_code}: {resp.text[:100]}")
+            record(
+                f"Moderator approve org: {target['name']}",
+                "FAIL",
+                f"Status {resp.status_code}: {resp.text[:100]}",
+            )
 
         # Reject another pending org
         if len(pending_orgs) > 1:
@@ -280,7 +450,9 @@ async def test_organization_workflow(client):
             if resp.status_code == 200:
                 record(f"Moderator reject org: {target2['name']}", "PASS")
             else:
-                record(f"Moderator reject org: {target2['name']}", "FAIL", f"Status {resp.status_code}")
+                record(
+                    f"Moderator reject org: {target2['name']}", "FAIL", f"Status {resp.status_code}"
+                )
 
     # Test: each owner can see their own org via public listing
     for org_db in db_orgs_data:
@@ -293,7 +465,16 @@ async def test_organization_workflow(client):
 
 async def test_search(client):
     print("\n--- Search Testing ---")
-    queries = ["Restaurant", "Mosque", "Charity", "Medical", "School", "Community", "Hotel", "Halal"]
+    queries = [
+        "Restaurant",
+        "Mosque",
+        "Charity",
+        "Medical",
+        "School",
+        "Community",
+        "Hotel",
+        "Halal",
+    ]
     for q in queries:
         resp = await client.get(f"{API_PREFIX}/search", params={"q": q})
         if resp.status_code == 200:
@@ -303,7 +484,7 @@ async def test_search(client):
             if count > 0:
                 record(f"Search: '{q}'", "PASS", f"Found {count} results")
             else:
-                record(f"Search: '{q}'", "PASS", f"Zero results (may be expected)")
+                record(f"Search: '{q}'", "PASS", "Zero results (may be expected)")
         else:
             record(f"Search: '{q}'", "FAIL", f"Status {resp.status_code}")
 
@@ -314,17 +495,19 @@ async def test_error_handling(client):
     mod_headers = {"Authorization": f"Bearer {mod_token}"}
 
     # Test 404
-    resp = await client.post(f"{API_PREFIX}/admin/organizations/00000000-0000-0000-0000-000000000000/approve",
-                             headers=mod_headers)
+    resp = await client.post(
+        f"{API_PREFIX}/admin/organizations/00000000-0000-0000-0000-000000000000/approve",
+        headers=mod_headers,
+    )
     if resp.status_code == 404:
         record("404 on non-existent org approval", "PASS")
     else:
         record("404 on non-existent org approval", "PASS", f"Got {resp.status_code} (acceptable)")
 
     # Test invalid login
-    resp = await client.post(f"{API_PREFIX}/auth/login", json={
-        "email": "nonexistent@test.com", "password": "wrong"
-    })
+    resp = await client.post(
+        f"{API_PREFIX}/auth/login", json={"email": "nonexistent@test.com", "password": "wrong"}
+    )
     if resp.status_code == 401:
         record("Invalid login returns 401", "PASS")
     else:
@@ -395,7 +578,9 @@ async def generate_report():
     lines.append("|------|------|-------|----------|--------|")
     for acct in ACCOUNTS:
         role_display = acct["role"].replace("_", " ").title()
-        lines.append(f"| {role_display} | {acct['name']} | {acct['email']} | {acct['password']} | Active |")
+        lines.append(
+            f"| {role_display} | {acct['name']} | {acct['email']} | {acct['password']} | Active |"
+        )
     lines.append("")
 
     # Organizations
@@ -423,7 +608,9 @@ async def generate_report():
     lines.append("## Role Permissions")
     lines.append("")
     lines.append("### Super Administrator")
-    lines.append("- Full system access: User Management, Organization Management, Moderator Management")
+    lines.append(
+        "- Full system access: User Management, Organization Management, Moderator Management"
+    )
     lines.append("- Payment Settings, CMS, Analytics, Audit Logs, Security")
     lines.append("- Categories, Advertisements, System Settings, API Health")
     lines.append("- Organization Verification")
@@ -443,9 +630,11 @@ async def generate_report():
     # Validation results
     lines.append("## Validation Results")
     lines.append("")
-    lines.append(f"| Category | Passed | Failed | Skipped |")
-    lines.append(f"|----------|--------|--------|---------|")
-    lines.append(f"| **Total** | **{results['passed']}** | **{results['failed']}** | **{results['skipped']}** |")
+    lines.append("| Category | Passed | Failed | Skipped |")
+    lines.append("|----------|--------|--------|---------|")
+    lines.append(
+        f"| **Total** | **{results['passed']}** | **{results['failed']}** | **{results['skipped']}** |"
+    )
     lines.append("")
 
     if results["failed"] > 0:
@@ -464,11 +653,13 @@ async def generate_report():
     lines.append("- Organizations with 'pending' status require moderator approval.")
     lines.append("- Run `python scripts/validate_seed_data.py` to re-validate.")
 
-    report_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "TEST_ACCOUNTS.md")
+    report_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "TEST_ACCOUNTS.md"
+    )
     with open(report_path, "w") as f:
         f.write("\n".join(lines))
 
-    print(f"\nReport generated: TEST_ACCOUNTS.md")
+    print("\nReport generated: TEST_ACCOUNTS.md")
     return report_path
 
 

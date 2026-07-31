@@ -13,21 +13,28 @@ async def test_list_businesses(api_client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_create_business_requires_auth(api_client: AsyncClient):
-    resp = await api_client.post("/api/v1/businesses", json={
-        "name": "Test Business",
-        "description": "A test business",
-        "category_id": "00000000-0000-0000-0000-000000000001",
-    })
+    resp = await api_client.post(
+        "/api/v1/businesses",
+        json={
+            "name": "Test Business",
+            "description": "A test business",
+            "category_id": "00000000-0000-0000-0000-000000000001",
+        },
+    )
     assert resp.status_code == 401
 
 
 @pytest.mark.asyncio
 async def test_create_business(api_client: AsyncClient, auth_headers: dict, sample_category: str):
-    resp = await api_client.post("/api/v1/businesses", json={
-        "name": "Test Business",
-        "description": "A test business",
-        "category_id": sample_category,
-    }, headers=auth_headers)
+    resp = await api_client.post(
+        "/api/v1/businesses",
+        json={
+            "name": "Test Business",
+            "description": "A test business",
+            "category_id": sample_category,
+        },
+        headers=auth_headers,
+    )
     assert resp.status_code == 201
     data = resp.json()
     assert data["name"] == "Test Business"

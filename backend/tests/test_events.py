@@ -13,12 +13,15 @@ async def test_list_events(api_client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_create_event_requires_auth(api_client: AsyncClient):
-    resp = await api_client.post("/api/v1/events", json={
-        "title": "Test Event",
-        "event_date": "2026-12-31T18:00:00Z",
-        "organizer_type": "business",
-        "organizer_id": "00000000-0000-0000-0000-000000000000",
-    })
+    resp = await api_client.post(
+        "/api/v1/events",
+        json={
+            "title": "Test Event",
+            "event_date": "2026-12-31T18:00:00Z",
+            "organizer_type": "business",
+            "organizer_id": "00000000-0000-0000-0000-000000000000",
+        },
+    )
     assert resp.status_code == 401
 
 
@@ -30,15 +33,19 @@ async def test_get_event_not_found(api_client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_create_event(api_client: AsyncClient, auth_headers: dict):
-    resp = await api_client.post("/api/v1/events", json={
-        "title": "Community Iftar",
-        "description": "A community iftar event",
-        "event_date": "2026-12-31T18:00:00Z",
-        "venue": "Main Mosque",
-        "category": "community",
-        "organizer_type": "mosque",
-        "organizer_id": "00000000-0000-0000-0000-000000000000",
-    }, headers=auth_headers)
+    resp = await api_client.post(
+        "/api/v1/events",
+        json={
+            "title": "Community Iftar",
+            "description": "A community iftar event",
+            "event_date": "2026-12-31T18:00:00Z",
+            "venue": "Main Mosque",
+            "category": "community",
+            "organizer_type": "mosque",
+            "organizer_id": "00000000-0000-0000-0000-000000000000",
+        },
+        headers=auth_headers,
+    )
     assert resp.status_code == 201
     data = resp.json()
     assert data["title"] == "Community Iftar"

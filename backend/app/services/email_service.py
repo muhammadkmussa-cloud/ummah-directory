@@ -28,20 +28,20 @@ def render_email_template(template_name: str, **kwargs) -> str:
         "verify_email": f"""
             <h2>Welcome to Umma Directory</h2>
             <p>Please verify your email by clicking the link below:</p>
-            <p><a href="{kwargs.get('link', '#')}">Verify Email</a></p>
+            <p><a href="{kwargs.get("link", "#")}">Verify Email</a></p>
             <p>This link expires in 24 hours.</p>
         """,
         "password_reset": f"""
             <h2>Password Reset Request</h2>
             <p>Click the link below to reset your password:</p>
-            <p><a href="{kwargs.get('link', '#')}">Reset Password</a></p>
+            <p><a href="{kwargs.get("link", "#")}">Reset Password</a></p>
             <p>This link expires in 1 hour.</p>
         """,
         "donation_receipt": f"""
             <h2>Donation Receipt</h2>
-            <p>Amount: {kwargs.get('amount', '')}</p>
-            <p>Charity: {kwargs.get('charity', '')}</p>
-            <p>Receipt: {kwargs.get('receipt', '')}</p>
+            <p>Amount: {kwargs.get("amount", "")}</p>
+            <p>Charity: {kwargs.get("charity", "")}</p>
+            <p>Receipt: {kwargs.get("receipt", "")}</p>
         """,
     }
     return templates.get(template_name, "")

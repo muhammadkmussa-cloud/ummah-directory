@@ -1,9 +1,10 @@
 import uuid
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy import select, func, or_
-from sqlalchemy.orm import selectinload
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, get_optional_user
@@ -40,7 +41,9 @@ async def list_org_posts(
 ):
     try:
         target_uuid = uuid.UUID(org_id)
-        stmt = select(Organization).where(or_(Organization.id == target_uuid, Organization.slug == org_id))
+        stmt = select(Organization).where(
+            or_(Organization.id == target_uuid, Organization.slug == org_id)
+        )
     except ValueError:
         stmt = select(Organization).where(Organization.slug == org_id)
 
@@ -59,25 +62,25 @@ async def list_org_posts(
 
     user_liked_post_ids = set()
     if user:
-        likes_res = await db.execute(
-            select(PostLike.post_id).where(PostLike.user_id == user.id)
-        )
+        likes_res = await db.execute(select(PostLike.post_id).where(PostLike.user_id == user.id))
         user_liked_post_ids = set(likes_res.scalars().all())
 
     items = []
     for p in posts:
-        items.append({
-            "id": str(p.id),
-            "organization_id": str(org.id),
-            "organization_name": org.name,
-            "author_id": str(p.author_id),
-            "author_name": p.author.full_name if p.author else "Organization Staff",
-            "content": p.content,
-            "image_url": p.image_url,
-            "like_count": p.like_count,
-            "is_liked_by_me": p.id in user_liked_post_ids,
-            "created_at": p.created_at.isoformat() if p.created_at else "",
-        })
+        items.append(
+            {
+                "id": str(p.id),
+                "organization_id": str(org.id),
+                "organization_name": org.name,
+                "author_id": str(p.author_id),
+                "author_name": p.author.full_name if p.author else "Organization Staff",
+                "content": p.content,
+                "image_url": p.image_url,
+                "like_count": p.like_count,
+                "is_liked_by_me": p.id in user_liked_post_ids,
+                "created_at": p.created_at.isoformat() if p.created_at else "",
+            }
+        )
 
     return items
 
@@ -91,7 +94,9 @@ async def create_org_post(
 ):
     try:
         target_uuid = uuid.UUID(org_id)
-        stmt = select(Organization).where(or_(Organization.id == target_uuid, Organization.slug == org_id))
+        stmt = select(Organization).where(
+            or_(Organization.id == target_uuid, Organization.slug == org_id)
+        )
     except ValueError:
         stmt = select(Organization).where(Organization.slug == org_id)
 
@@ -100,11 +105,13 @@ async def create_org_post(
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found")
 
-    isAdmin = user.role.name in ("super_admin", "moderator") if user.role else False
-    isOwner = org.owner_id == user.id
+    is_admin = user.role.name in ("super_admin", "moderator") if user.role else False
+    is_owner = org.owner_id == user.id
 
-    if not (isAdmin or isOwner):
-        raise HTTPException(status_code=403, detail="Only organization owners or administrators can publish posts")
+    if not (is_admin or is_owner):
+        raise HTTPException(
+            status_code=403, detail="Only organization owners or administrators can publish posts"
+        )
 
     post = OrganizationPost(
         organization_id=org.id,
@@ -141,7 +148,7 @@ async def toggle_post_like(
     try:
         p_uuid = uuid.UUID(post_id)
     except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid post ID format")
+        raise HTTPException(status_code=400, detail="Invalid post ID format") from None
 
     post_res = await db.execute(select(OrganizationPost).where(OrganizationPost.id == p_uuid))
     post = post_res.scalar_one_or_none()
@@ -182,17 +189,17 @@ async def delete_post(
     try:
         p_uuid = uuid.UUID(post_id)
     except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid post ID format")
+        raise HTTPException(status_code=400, detail="Invalid post ID format") from None
 
     post_res = await db.execute(select(OrganizationPost).where(OrganizationPost.id == p_uuid))
     post = post_res.scalar_one_or_none()
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
 
-    isAdmin = user.role.name in ("super_admin", "moderator") if user.role else False
-    isAuthor = post.author_id == user.id
+    is_admin = user.role.name in ("super_admin", "moderator") if user.role else False
+    is_author = post.author_id == user.id
 
-    if not (isAdmin or isAuthor):
+    if not (is_admin or is_author):
         raise HTTPException(status_code=403, detail="Not authorized to delete this post")
 
     await db.delete(post)

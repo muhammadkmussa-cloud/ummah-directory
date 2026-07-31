@@ -27,11 +27,17 @@ async def list_active_ads(
     query = query.order_by(Advertisement.created_at.desc())
     result = await db.execute(query)
 
-    return [{
-        "id": str(a.id), "ad_type": a.ad_type, "title": a.title,
-        "image_url": a.image_url, "destination_url": a.destination_url,
-        "placement": a.placement,
-    } for a in result.scalars().all()]
+    return [
+        {
+            "id": str(a.id),
+            "ad_type": a.ad_type,
+            "title": a.title,
+            "image_url": a.image_url,
+            "destination_url": a.destination_url,
+            "placement": a.placement,
+        }
+        for a in result.scalars().all()
+    ]
 
 
 @router.post("")

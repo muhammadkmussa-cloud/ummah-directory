@@ -4,7 +4,9 @@ from httpx import AsyncClient
 
 @pytest.mark.asyncio
 async def test_create_payment_intent_requires_auth(api_client: AsyncClient):
-    resp = await api_client.post("/api/v1/payments/create-intent?gateway=stripe&amount=100&currency=KES")
+    resp = await api_client.post(
+        "/api/v1/payments/create-intent?gateway=stripe&amount=100&currency=KES"
+    )
     assert resp.status_code == 401
 
 

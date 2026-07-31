@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import uuid
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
-from typing import TYPE_CHECKING
 
 from app.models.base import BaseModelMixin
 
@@ -28,4 +27,4 @@ class SavedPaymentMethod(BaseModelMixin):
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
 
-    user: Mapped["User"] = relationship("User", back_populates="saved_payment_methods")
+    user: Mapped[User] = relationship("User", back_populates="saved_payment_methods")

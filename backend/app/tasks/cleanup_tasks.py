@@ -21,6 +21,7 @@ def expire_premier_listings():
                 .values(is_premier=False, premier_expires_at=None)
             )
             await session.commit()
+
     asyncio.run(run())
 
 
@@ -42,6 +43,7 @@ def archive_old_events():
                 .values(status="archived")
             )
             await session.commit()
+
     asyncio.run(run())
 
 
@@ -73,6 +75,7 @@ def activate_expire_ads():
                 .values(is_active=False)
             )
             await session.commit()
+
     asyncio.run(run())
 
 
@@ -109,7 +112,7 @@ def send_event_reminders():
                         select(Notification).where(
                             Notification.user_id == saved.user_id,
                             Notification.type == "event_reminder",
-                            Notification.data['event_id'].as_string() == str(event.id),
+                            Notification.data["event_id"].as_string() == str(event.id),
                         )
                     )
                     if not existing.scalar_one_or_none():
@@ -117,11 +120,15 @@ def send_event_reminders():
                             user_id=saved.user_id,
                             type="event_reminder",
                             title=f"Reminder: {event.title} starts soon!",
-                            message=f"Your saved event '{event.title}' is starting {event.event_time or 'soon'} at {event.venue or 'the venue'}.",
+                            message=(
+                                f"Your saved event '{event.title}' is starting "
+                                f"{event.event_time or 'soon'} at {event.venue or 'the venue'}."
+                            ),
                             data={"event_id": str(event.id), "event_title": event.title},
                         )
                         session.add(notif)
             await session.commit()
+
     asyncio.run(run())
 
 
@@ -138,6 +145,7 @@ def notify_prayer_time_changes():
     async def run():
         async with async_session_factory() as session:
             from app.models.prayer_subscription import MosquePrayerSubscription
+
             subs = await session.execute(
                 select(MosquePrayerSubscription).where(MosquePrayerSubscription.is_active)
             )
@@ -151,9 +159,12 @@ def notify_prayer_time_changes():
                         user_id=sub.user_id,
                         type="prayer_time_update",
                         title=f"Prayer times updated for {mosque.name}",
-                        message="The prayer times have been updated. Check the mosque page for details.",
+                        message=(
+                            "The prayer times have been updated. Check the mosque page for details."
+                        ),
                         data={"mosque_id": str(mosque.id), "mosque_name": mosque.name},
                     )
                     session.add(notif)
             await session.commit()
+
     asyncio.run(run())

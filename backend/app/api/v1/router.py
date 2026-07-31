@@ -4,6 +4,7 @@ from app.api.v1.endpoints import (
     admin,
     advertisements,
     analytics,
+    appeals,
     auth,
     businesses,
     campaigns,
@@ -15,7 +16,7 @@ from app.api.v1.endpoints import (
     events,
     favorites,
     files,
-
+    follows,
     mfa,
     mosques,
     notifications,
@@ -24,10 +25,12 @@ from app.api.v1.endpoints import (
     payments,
     posts,
     prayer_times,
+    push,
     reports,
     reviews,
     search,
     seo,
+    specialized,
     users,
 )
 
@@ -51,12 +54,16 @@ api_router.include_router(donations.router, prefix="/donations", tags=["Donation
 api_router.include_router(payments.router, prefix="/payments", tags=["Payments"])
 api_router.include_router(prayer_times.router, prefix="/prayer-times", tags=["Prayer Times"])
 api_router.include_router(notifications.router, prefix="/notifications", tags=["Notifications"])
+api_router.include_router(push.router, prefix="/push", tags=["Push"])
 api_router.include_router(favorites.router, prefix="/favorites", tags=["Favorites"])
 api_router.include_router(reports.router, prefix="/reports", tags=["Reports"])
 api_router.include_router(advertisements.router, prefix="/advertisements", tags=["Advertisements"])
+api_router.include_router(follows.router, prefix="/follows", tags=["Follows"])
+api_router.include_router(appeals.router, prefix="/appeals", tags=["Appeals"])
 
 api_router.include_router(cms.router, prefix="/cms", tags=["CMS"])
 api_router.include_router(admin.router, prefix="/admin", tags=["Admin"])
 api_router.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])
 api_router.include_router(owner.router, prefix="/owner", tags=["Owner"])
 api_router.include_router(seo.router, prefix="", tags=["SEO"])
+api_router.include_router(specialized.router, prefix="", tags=["Specialized Orgs"])

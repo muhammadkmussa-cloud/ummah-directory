@@ -7,7 +7,11 @@ from app.core.config import settings
 from app.core.retry import with_retry
 from app.payments.base import PaymentEvent, PaymentGateway, PaymentIntent
 
-PAYPAL_API = "https://api-m.sandbox.paypal.com" if settings.paypal_mode == "sandbox" else "https://api-m.paypal.com"
+PAYPAL_API = (
+    "https://api-m.sandbox.paypal.com"
+    if settings.paypal_mode == "sandbox"
+    else "https://api-m.paypal.com"
+)
 
 RETRY_EXCEPTIONS = (httpx.RequestError, httpx.TimeoutException, httpx.HTTPStatusError)
 
@@ -35,13 +39,15 @@ class PayPalGateway(PaymentGateway):
                 headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
                 json={
                     "intent": "CAPTURE",
-                    "purchase_units": [{
-                        "amount": {
-                            "currency_code": currency.upper(),
-                            "value": str(amount),
-                        },
-                        "description": metadata.get("description", "") if metadata else "",
-                    }],
+                    "purchase_units": [
+                        {
+                            "amount": {
+                                "currency_code": currency.upper(),
+                                "value": str(amount),
+                            },
+                            "description": metadata.get("description", "") if metadata else "",
+                        }
+                    ],
                 },
             )
             data = resp.json()

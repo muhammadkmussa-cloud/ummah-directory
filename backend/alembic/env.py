@@ -1,8 +1,10 @@
 import asyncio
 from logging.config import fileConfig
+
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
+
 from alembic import context
 from app.core.database import Base
 from app.models import *  # noqa: F401, F403
@@ -16,6 +18,7 @@ target_metadata = Base.metadata
 
 def run_migrations_offline() -> None:
     import os
+
     url = os.environ.get("DATABASE_URL") or config.get_main_option("sqlalchemy.url")
     context.configure(url=url, target_metadata=target_metadata, literal_binds=True)
     with context.begin_transaction():
@@ -31,6 +34,7 @@ def do_run_migrations(connection: Connection) -> None:
 async def run_async_migrations() -> None:
     configuration = config.get_section(config.config_ini_section, {})
     import os
+
     db_url = os.environ.get("DATABASE_URL")
     if db_url:
         configuration["sqlalchemy.url"] = db_url

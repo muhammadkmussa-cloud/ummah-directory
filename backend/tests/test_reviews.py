@@ -12,10 +12,13 @@ async def test_list_reviews_requires_business_id(api_client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_create_review_requires_auth(api_client: AsyncClient):
-    resp = await api_client.post("/api/v1/reviews/business/00000000-0000-0000-0000-000000000000", json={
-        "rating": 5,
-        "comment": "Great place!",
-    })
+    resp = await api_client.post(
+        "/api/v1/reviews/business/00000000-0000-0000-0000-000000000000",
+        json={
+            "rating": 5,
+            "comment": "Great place!",
+        },
+    )
     assert resp.status_code == 401
 
 

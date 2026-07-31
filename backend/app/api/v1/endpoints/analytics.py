@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime, timedelta
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -54,13 +55,20 @@ async def track_click(
     db: AsyncSession = Depends(get_db),
 ):
     if click_type not in ALLOWED_CLICK_TYPES:
-        raise HTTPException(status_code=400, detail=f"Invalid click type. Must be one of: {ALLOWED_CLICK_TYPES}")
+        raise HTTPException(
+            status_code=400, detail=f"Invalid click type. Must be one of: {ALLOWED_CLICK_TYPES}"
+        )
     result = await db.execute(select(Business).where(Business.id == business_id))
     business = result.scalar_one_or_none()
     if not business:
         raise HTTPException(status_code=404, detail="Business not found")
     await record_event(
-        db, f"click.{click_type}", "business", business_id, str(user.id), business_id,
+        db,
+        f"click.{click_type}",
+        "business",
+        business_id,
+        str(user.id),
+        business_id,
     )
     await log_action(db, user.id, f"analytics.click.{click_type}", "business", business_id)
     return {"message": "Tracked"}
@@ -89,7 +97,11 @@ async def track_search(
     db: AsyncSession = Depends(get_db),
 ):
     await record_event(
-        db, "search", "search", query, str(user.id),
+        db,
+        "search",
+        "search",
+        query,
+        str(user.id),
         metadata_json={"query": query, "result_count": result_count},
     )
     return {"message": "Tracked"}
@@ -139,8 +151,7 @@ async def business_analytics(
             "website": event_counts.get("click.website", 0),
             "phone": event_counts.get("click.phone", 0),
             "directions": (
-                event_counts.get("click.directions", 0)
-                + event_counts.get("directions", 0)
+                event_counts.get("click.directions", 0) + event_counts.get("directions", 0)
             ),
         },
         "search_impressions": event_counts.get("search", 0),
@@ -175,7 +186,9 @@ async def resource_analytics(
         if obj:
             owner_id = str(obj.owner_id)
     elif resource_type == "education":
-        result = await db.execute(select(EducationalInstitution).where(EducationalInstitution.id == resource_id))
+        result = await db.execute(
+            select(EducationalInstitution).where(EducationalInstitution.id == resource_id)
+        )
         obj = result.scalar_one_or_none()
         if obj:
             owner_id = str(obj.owner_id)
@@ -208,15 +221,20 @@ async def resource_analytics(
     historical = await db.execute(
         select(
             func.date(AnalyticsEvent.created_at).label("date"),
-            func.count(AnalyticsEvent.id).label("count")
-        ).where(
+            func.count(AnalyticsEvent.id).label("count"),
+        )
+        .where(
             AnalyticsEvent.resource_type == resource_type,
             AnalyticsEvent.resource_id == resource_id,
-            AnalyticsEvent.created_at >= thirty_days_ago
-        ).group_by(func.date(AnalyticsEvent.created_at)).order_by("date")
+            AnalyticsEvent.created_at >= thirty_days_ago,
+        )
+        .group_by(func.date(AnalyticsEvent.created_at))
+        .order_by("date")
     )
-    
-    historical_data = [{"date": str(row.date), "interactions": row.count} for row in historical.all()]
+
+    historical_data = [
+        {"date": str(row.date), "interactions": row.count} for row in historical.all()
+    ]
 
     view_count = getattr(obj, "view_count", 0) or 0
     review_count = getattr(obj, "review_count", 0) or 0
@@ -231,8 +249,7 @@ async def resource_analytics(
             "website": event_counts.get("click.website", 0),
             "phone": event_counts.get("click.phone", 0),
             "directions": (
-                event_counts.get("click.directions", 0)
-                + event_counts.get("directions", 0)
+                event_counts.get("click.directions", 0) + event_counts.get("directions", 0)
             ),
         },
         "search_impressions": event_counts.get("search", 0),
@@ -245,9 +262,7 @@ async def owner_dashboard(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    businesses_result = await db.execute(
-        select(Business).where(Business.owner_id == user.id)
-    )
+    businesses_result = await db.execute(select(Business).where(Business.owner_id == user.id))
     businesses = businesses_result.scalars().all()
 
     total_views = sum(b.view_count or 0 for b in businesses)
@@ -263,8 +278,7 @@ async def owner_dashboard(
         "total_views": total_views,
         "total_reviews": total_reviews,
         "average_rating": (
-            sum(b.avg_rating or 0 for b in businesses) / approved
-            if approved > 0 else 0
+            sum(b.avg_rating or 0 for b in businesses) / approved if approved > 0 else 0
         ),
         "businesses": [
             {
@@ -288,9 +302,7 @@ async def mosque_dashboard(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    mosques_result = await db.execute(
-        select(Mosque).where(Mosque.owner_id == user.id)
-    )
+    mosques_result = await db.execute(select(Mosque).where(Mosque.owner_id == user.id))
     mosques = mosques_result.scalars().all()
 
     return {
@@ -318,16 +330,13 @@ async def charity_dashboard(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    charities_result = await db.execute(
-        select(Charity).where(Charity.owner_id == user.id)
-    )
+    charities_result = await db.execute(select(Charity).where(Charity.owner_id == user.id))
     charities = charities_result.scalars().all()
 
     from app.models.charity import CharityCampaign
+
     campaigns_result = await db.execute(
-        select(CharityCampaign).where(
-            CharityCampaign.charity_id.in_([c.id for c in charities])
-        )
+        select(CharityCampaign).where(CharityCampaign.charity_id.in_([c.id for c in charities]))
     )
     campaigns = campaigns_result.scalars().all()
 
@@ -364,6 +373,7 @@ async def admin_analytics_overview(
     user: User = Depends(get_current_user),
 ):
     from app.core.dependencies import require_role
+
     await require_role("super_admin")(user=user)
 
     total_searches = await db.execute(
@@ -385,7 +395,6 @@ async def admin_analytics_overview(
         "total_searches": total_searches.scalar() or 0,
         "total_clicks": total_clicks.scalar() or 0,
         "top_listed_businesses": [
-            {"id": str(r[0]), "name": r[1], "views": r[2]}
-            for r in top_businesses.all()
+            {"id": str(r[0]), "name": r[1], "views": r[2]} for r in top_businesses.all()
         ],
     }

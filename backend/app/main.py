@@ -6,10 +6,10 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
-from starlette.middleware.base import BaseHTTPMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.api.v1.router import api_router
 from app.core.config import settings
@@ -38,6 +38,7 @@ structlog.configure(
 )
 
 import logging
+
 logging.basicConfig(format="%(message)s", level=_log_level)
 structlog.stdlib.recreate_defaults()
 
@@ -59,7 +60,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
-        response.headers["Content-Security-Policy"] = "default-src 'self'; img-src 'self' data: https:; script-src 'self'; style-src 'self' 'unsafe-inline';"
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; img-src 'self' data: https:; "
+            "script-src 'self'; style-src 'self' 'unsafe-inline';"
+        )
         return response
 
 
@@ -80,8 +84,11 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=[
-        "Authorization", "Content-Type", "Accept",
-        "X-Requested-With", "X-Idempotency-Key",
+        "Authorization",
+        "Content-Type",
+        "Accept",
+        "X-Requested-With",
+        "X-Idempotency-Key",
     ],
 )
 
@@ -98,6 +105,7 @@ app.include_router(api_router, prefix="/api/v1")
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     import time
+
     start = time.time()
     response = await call_next(request)
     duration = time.time() - start

@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import uuid
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
-from typing import TYPE_CHECKING
 
 from app.models.base import BaseModelMixin
 
@@ -37,6 +36,7 @@ class NotificationPreference(BaseModelMixin):
 
     email_notifications: Mapped[bool] = mapped_column(Boolean, default=True)
     in_app_notifications: Mapped[bool] = mapped_column(Boolean, default=True)
+    push_notifications: Mapped[bool] = mapped_column(Boolean, default=True)
     listing_updates: Mapped[bool] = mapped_column(Boolean, default=True)
     donation_updates: Mapped[bool] = mapped_column(Boolean, default=True)
     review_updates: Mapped[bool] = mapped_column(Boolean, default=True)

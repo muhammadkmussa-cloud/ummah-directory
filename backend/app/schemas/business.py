@@ -17,7 +17,7 @@ class DayHours(BaseModel):
             try:
                 datetime.strptime(v, "%H:%M")
             except ValueError:
-                raise ValueError("Time must be in HH:MM format")
+                raise ValueError("Time must be in HH:MM format") from None
         return v
 
 

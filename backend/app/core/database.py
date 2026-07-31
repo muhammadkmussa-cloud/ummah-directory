@@ -22,7 +22,7 @@ async_session_factory = async_sessionmaker(engine, class_=AsyncSession, expire_o
 
 
 from sqlalchemy import event
-from sqlalchemy.orm import DeclarativeBase, Session, with_loader_criteria
+from sqlalchemy.orm import Session, with_loader_criteria
 
 
 class Base(DeclarativeBase):
@@ -45,7 +45,7 @@ def _add_filtering_criteria(execute_state):
         )
 
 
-async def get_db() -> AsyncGenerator[AsyncSession, None]:
+async def get_db() -> AsyncGenerator[AsyncSession]:
     async with async_session_factory() as session:
         try:
             yield session

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
@@ -9,10 +9,10 @@ from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, require_email_verified, require_permission
+from app.models.ad_analytics import AdAnalytics
 from app.models.ad_campaign import AdCampaign
 from app.models.organization import Organization
 from app.models.user import User
-from app.models.ad_analytics import AdAnalytics
 from app.schemas.ad_campaign import (
     AdFeedItem,
     AdFeedResponse,
@@ -126,7 +126,10 @@ async def create_campaign(
             )
         )
         if existing.scalar_one_or_none():
-            raise HTTPException(status_code=409, detail="Organization already has an active or pending featured listing campaign")
+            raise HTTPException(
+                status_code=409,
+                detail="Organization already has an active or pending featured listing campaign",
+            )
 
     campaign = AdCampaign(
         name=body.name,
@@ -145,8 +148,12 @@ async def create_campaign(
         end_date=body.end_date,
         target_country=body.target_country,
         target_city=body.target_city,
-        target_categories={"categories": body.target_categories} if body.target_categories else None,
-        placement_config={"category_id": body.target_categories[0]} if body.campaign_type == "category_spotlight" and body.target_categories else None,
+        target_categories={"categories": body.target_categories}
+        if body.target_categories
+        else None,
+        placement_config={"category_id": body.target_categories[0]}
+        if body.campaign_type == "category_spotlight" and body.target_categories
+        else None,
     )
     db.add(campaign)
     await db.flush()
@@ -162,9 +169,7 @@ async def get_campaign(
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
-        select(AdCampaign)
-        .options(selectinload(AdCampaign.organization))
-        .where(AdCampaign.id == id)
+        select(AdCampaign).options(selectinload(AdCampaign.organization)).where(AdCampaign.id == id)
     )
     campaign = result.scalar_one_or_none()
     if not campaign:
@@ -186,9 +191,7 @@ async def update_campaign(
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
-        select(AdCampaign)
-        .options(selectinload(AdCampaign.organization))
-        .where(AdCampaign.id == id)
+        select(AdCampaign).options(selectinload(AdCampaign.organization)).where(AdCampaign.id == id)
     )
     campaign = result.scalar_one_or_none()
     if not campaign:
@@ -218,9 +221,7 @@ async def submit_campaign(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(AdCampaign).where(AdCampaign.id == id)
-    )
+    result = await db.execute(select(AdCampaign).where(AdCampaign.id == id))
     campaign = result.scalar_one_or_none()
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
@@ -231,10 +232,16 @@ async def submit_campaign(
         raise HTTPException(status_code=404, detail="Campaign not found")
 
     if campaign.status != "draft":
-        raise HTTPException(status_code=422, detail=f"Cannot submit campaign in status '{campaign.status}'")
+        raise HTTPException(
+            status_code=422, detail=f"Cannot submit campaign in status '{campaign.status}'"
+        )
 
     campaign.status = "pending_review"
-    return CampaignSubmitResponse(message="Campaign submitted for review", campaign_id=str(campaign.id), status=campaign.status)
+    return CampaignSubmitResponse(
+        message="Campaign submitted for review",
+        campaign_id=str(campaign.id),
+        status=campaign.status,
+    )
 
 
 @router.post("/campaigns/{id}/pay", response_model=dict)
@@ -244,9 +251,7 @@ async def pay_campaign(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(AdCampaign).where(AdCampaign.id == id)
-    )
+    result = await db.execute(select(AdCampaign).where(AdCampaign.id == id))
     campaign = result.scalar_one_or_none()
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
@@ -257,7 +262,9 @@ async def pay_campaign(
         raise HTTPException(status_code=404, detail="Campaign not found")
 
     if campaign.status not in ("pending_review", "draft"):
-        raise HTTPException(status_code=422, detail=f"Cannot pay for campaign in status '{campaign.status}'")
+        raise HTTPException(
+            status_code=422, detail=f"Cannot pay for campaign in status '{campaign.status}'"
+        )
 
     from app.models.payment import Payment
 
@@ -291,9 +298,7 @@ async def activate_campaign(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(AdCampaign).where(AdCampaign.id == id)
-    )
+    result = await db.execute(select(AdCampaign).where(AdCampaign.id == id))
     campaign = result.scalar_one_or_none()
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
@@ -303,8 +308,9 @@ async def activate_campaign(
     if not org_record or org_record.owner_id != user.id:
         raise HTTPException(status_code=404, detail="Campaign not found")
 
-    from app.models.payment import Payment
     from sqlalchemy import and_
+
+    from app.models.payment import Payment
 
     payment_result = await db.execute(
         select(Payment).where(
@@ -317,13 +323,19 @@ async def activate_campaign(
     )
     payment = payment_result.scalar_one_or_none()
     if not payment:
-        raise HTTPException(status_code=402, detail="Payment required. Complete payment before activating.")
+        raise HTTPException(
+            status_code=402, detail="Payment required. Complete payment before activating."
+        )
 
     if campaign.status not in ("pending_review", "draft"):
-        raise HTTPException(status_code=422, detail=f"Cannot activate campaign in status '{campaign.status}'")
+        raise HTTPException(
+            status_code=422, detail=f"Cannot activate campaign in status '{campaign.status}'"
+        )
 
     campaign.status = "active"
-    return CampaignSubmitResponse(message="Campaign activated", campaign_id=str(campaign.id), status=campaign.status)
+    return CampaignSubmitResponse(
+        message="Campaign activated", campaign_id=str(campaign.id), status=campaign.status
+    )
 
 
 @router.post("/campaigns/{id}/cancel", response_model=CampaignSubmitResponse)
@@ -332,9 +344,7 @@ async def cancel_campaign(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(AdCampaign).where(AdCampaign.id == id)
-    )
+    result = await db.execute(select(AdCampaign).where(AdCampaign.id == id))
     campaign = result.scalar_one_or_none()
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
@@ -345,10 +355,14 @@ async def cancel_campaign(
         raise HTTPException(status_code=404, detail="Campaign not found")
 
     if campaign.status not in ("active", "paused", "pending_review"):
-        raise HTTPException(status_code=422, detail=f"Cannot cancel campaign in status '{campaign.status}'")
+        raise HTTPException(
+            status_code=422, detail=f"Cannot cancel campaign in status '{campaign.status}'"
+        )
 
     campaign.status = "cancelled"
-    return CampaignSubmitResponse(message="Campaign cancelled", campaign_id=str(campaign.id), status=campaign.status)
+    return CampaignSubmitResponse(
+        message="Campaign cancelled", campaign_id=str(campaign.id), status=campaign.status
+    )
 
 
 @router.delete("/campaigns/{id}", response_model=dict)
@@ -357,9 +371,7 @@ async def delete_campaign(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(AdCampaign).where(AdCampaign.id == id)
-    )
+    result = await db.execute(select(AdCampaign).where(AdCampaign.id == id))
     campaign = result.scalar_one_or_none()
     if not campaign:
         raise HTTPException(status_code=404, detail="Campaign not found")
@@ -381,7 +393,7 @@ async def get_feed_ads(
     size: int = 5,
     db: AsyncSession = Depends(get_db),
 ):
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     result = await db.execute(
         select(AdCampaign)
         .options(selectinload(AdCampaign.organization))
@@ -396,20 +408,22 @@ async def get_feed_ads(
         .limit(size)
     )
     campaigns = result.scalars().all()
-    return AdFeedResponse(items=[
-        AdFeedItem(
-            id=str(c.id),
-            headline=c.headline or c.name,
-            description=c.description,
-            cta_type=c.cta_type,
-            media_url=c.media_url,
-            destination_url=c.destination_url,
-            organization_id=str(c.organization_id) if c.organization_id else None,
-            organization_name=c.organization.name if c.organization else None,
-            organization_slug=c.organization.slug if c.organization else None,
-        )
-        for c in campaigns
-    ])
+    return AdFeedResponse(
+        items=[
+            AdFeedItem(
+                id=str(c.id),
+                headline=c.headline or c.name,
+                description=c.description,
+                cta_type=c.cta_type,
+                media_url=c.media_url,
+                destination_url=c.destination_url,
+                organization_id=str(c.organization_id) if c.organization_id else None,
+                organization_name=c.organization.name if c.organization else None,
+                organization_slug=c.organization.slug if c.organization else None,
+            )
+            for c in campaigns
+        ]
+    )
 
 
 @router.get("/ads/spotlight", response_model=AdSpotlightResponse | None)
@@ -417,18 +431,20 @@ async def get_category_spotlight(
     category_id: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    now = datetime.now(timezone.utc)
-    query = select(AdCampaign).options(selectinload(AdCampaign.organization)).where(
-        AdCampaign.campaign_type == "category_spotlight",
-        AdCampaign.status == "active",
-        AdCampaign.start_date <= now,
-        AdCampaign.end_date >= now,
-        AdCampaign.deleted_at.is_(None),
+    now = datetime.now(UTC)
+    query = (
+        select(AdCampaign)
+        .options(selectinload(AdCampaign.organization))
+        .where(
+            AdCampaign.campaign_type == "category_spotlight",
+            AdCampaign.status == "active",
+            AdCampaign.start_date <= now,
+            AdCampaign.end_date >= now,
+            AdCampaign.deleted_at.is_(None),
+        )
     )
     if category_id:
-        query = query.where(
-            AdCampaign.placement_config["category_id"].as_string() == category_id
-        )
+        query = query.where(AdCampaign.placement_config["category_id"].as_string() == category_id)
     query = query.order_by(func.random()).limit(1)
     result = await db.execute(query)
     c = result.scalar_one_or_none()
@@ -512,10 +528,15 @@ async def pause_campaign(
         raise HTTPException(status_code=404, detail="Campaign not found")
 
     if campaign.status != "active":
-        raise HTTPException(status_code=422, detail=f"Can only pause active campaigns, current status: {campaign.status}")
+        raise HTTPException(
+            status_code=422,
+            detail=f"Can only pause active campaigns, current status: {campaign.status}",
+        )
 
     campaign.status = "paused"
-    return CampaignSubmitResponse(message="Campaign paused", campaign_id=str(campaign.id), status=campaign.status)
+    return CampaignSubmitResponse(
+        message="Campaign paused", campaign_id=str(campaign.id), status=campaign.status
+    )
 
 
 @router.post("/campaigns/{id}/resume", response_model=CampaignSubmitResponse)
@@ -535,13 +556,20 @@ async def resume_campaign(
         raise HTTPException(status_code=404, detail="Campaign not found")
 
     if campaign.status != "paused":
-        raise HTTPException(status_code=422, detail=f"Can only resume paused campaigns, current status: {campaign.status}")
+        raise HTTPException(
+            status_code=422,
+            detail=f"Can only resume paused campaigns, current status: {campaign.status}",
+        )
 
-    if campaign.end_date and campaign.end_date < datetime.now(timezone.utc):
-        raise HTTPException(status_code=422, detail="Campaign end date has passed, please renew instead")
+    if campaign.end_date and campaign.end_date < datetime.now(UTC):
+        raise HTTPException(
+            status_code=422, detail="Campaign end date has passed, please renew instead"
+        )
 
     campaign.status = "active"
-    return CampaignSubmitResponse(message="Campaign resumed", campaign_id=str(campaign.id), status=campaign.status)
+    return CampaignSubmitResponse(
+        message="Campaign resumed", campaign_id=str(campaign.id), status=campaign.status
+    )
 
 
 @router.post("/campaigns/{id}/renew", response_model=dict)
@@ -562,14 +590,14 @@ async def renew_campaign(
         raise HTTPException(status_code=404, detail="Campaign not found")
 
     if campaign.status not in ("active", "completed", "paused"):
-        raise HTTPException(status_code=422, detail=f"Cannot renew campaign in status: {campaign.status}")
+        raise HTTPException(
+            status_code=422, detail=f"Cannot renew campaign in status: {campaign.status}"
+        )
 
     from datetime import timedelta
-    now = datetime.now(timezone.utc)
-    new_end = max(
-        campaign.end_date or now,
-        now
-    ) + timedelta(days=days)
+
+    now = datetime.now(UTC)
+    new_end = max(campaign.end_date or now, now) + timedelta(days=days)
 
     campaign.end_date = new_end
     if campaign.status in ("completed", "paused"):

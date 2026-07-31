@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
-from typing import TYPE_CHECKING
 
 from app.models.base import BaseModelMixin
 from app.models.organization import Organization
@@ -34,9 +33,11 @@ class Review(BaseModelMixin):
         UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
     )
 
-    user: Mapped["User"] = relationship("User", back_populates="reviews")
+    user: Mapped[User] = relationship("User", back_populates="reviews")
     organization: Mapped[Organization] = relationship("Organization", back_populates="reviews")
-    reply: Mapped[ReviewReply | None] = relationship("ReviewReply", back_populates="review", uselist=False)
+    reply: Mapped[ReviewReply | None] = relationship(
+        "ReviewReply", back_populates="review", uselist=False
+    )
 
 
 class ReviewReply(BaseModelMixin):
@@ -44,11 +45,14 @@ class ReviewReply(BaseModelMixin):
 
     content: Mapped[str] = mapped_column(Text, nullable=False)
     review_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("reviews.id", ondelete="CASCADE"), unique=True, nullable=False
+        UUID(as_uuid=True),
+        ForeignKey("reviews.id", ondelete="CASCADE"),
+        unique=True,
+        nullable=False,
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id"), nullable=False
     )
 
     review: Mapped[Review] = relationship("Review", back_populates="reply")
-    user: Mapped["User"] = relationship("User")
+    user: Mapped[User] = relationship("User")

@@ -4,12 +4,15 @@ from httpx import AsyncClient
 
 @pytest.mark.asyncio
 async def test_initiate_donation_requires_auth(api_client: AsyncClient):
-    resp = await api_client.post("/api/v1/donations/initiate", json={
-        "amount": 100,
-        "currency": "KES",
-        "campaign_id": "00000000-0000-0000-0000-000000000000",
-        "payment_gateway": "stripe",
-    })
+    resp = await api_client.post(
+        "/api/v1/donations/initiate",
+        json={
+            "amount": 100,
+            "currency": "KES",
+            "campaign_id": "00000000-0000-0000-0000-000000000000",
+            "payment_gateway": "stripe",
+        },
+    )
     assert resp.status_code == 401
 
 

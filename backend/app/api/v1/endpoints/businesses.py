@@ -130,31 +130,34 @@ async def list_businesses(
         featured_org_ids = {str(row[0]) for row in featured_result.all() if row[0]}
 
     return PaginatedResponse(
-        items=[BusinessResponse(
-            id=str(b.id),
-            name=b.name,
-            slug=b.slug,
-            description=b.description,
-            email=b.email,
-            phone=b.phone,
-            whatsapp=b.whatsapp,
-            website=b.website,
-            address=b.address,
-            city=b.city,
-            country=b.country,
-            latitude=b.latitude,
-            longitude=b.longitude,
-            logo_url=b.logo_url,
-            cover_image_url=b.cover_image_url,
-            avg_rating=b.avg_rating,
-            review_count=b.review_count,
-            is_verified=b.is_verified,
-            is_premier=b.is_premier,
-            is_featured=str(b.id) in featured_org_ids,
-            status=b.status,
-            category_id=str(b.category_id),
-            created_at=b.created_at,
-        ) for b in businesses],
+        items=[
+            BusinessResponse(
+                id=str(b.id),
+                name=b.name,
+                slug=b.slug,
+                description=b.description,
+                email=b.email,
+                phone=b.phone,
+                whatsapp=b.whatsapp,
+                website=b.website,
+                address=b.address,
+                city=b.city,
+                country=b.country,
+                latitude=b.latitude,
+                longitude=b.longitude,
+                logo_url=b.logo_url,
+                cover_image_url=b.cover_image_url,
+                avg_rating=b.avg_rating,
+                review_count=b.review_count,
+                is_verified=b.is_verified,
+                is_premier=b.is_premier,
+                is_featured=str(b.id) in featured_org_ids,
+                status=b.status,
+                category_id=str(b.category_id),
+                created_at=b.created_at,
+            )
+            for b in businesses
+        ],
         total=total,
         page=page,
         size=size,
@@ -163,7 +166,9 @@ async def list_businesses(
 
 
 import uuid
+
 from sqlalchemy import update
+
 
 @router.get("/{slug}", response_model=BusinessResponse)
 async def get_business(
@@ -182,6 +187,7 @@ async def get_business(
         raise HTTPException(status_code=404, detail="Business not found")
 
     from app.models.organization import Organization
+
     await db.execute(
         update(Organization)
         .where(Organization.id == b.id)
@@ -286,8 +292,18 @@ async def create_business(
 
 
 MAJOR_FIELDS = {
-    "name", "description", "email", "phone", "whatsapp", "website",
-    "address", "city", "country", "category_id", "latitude", "longitude",
+    "name",
+    "description",
+    "email",
+    "phone",
+    "whatsapp",
+    "website",
+    "address",
+    "city",
+    "country",
+    "category_id",
+    "latitude",
+    "longitude",
     "operating_hours",
 }
 
@@ -313,8 +329,14 @@ async def update_business(
     if changed_major and business.status == "approved":
         business.pending_edit = update_data
         business.status = "pending_changes"
-        await log_action(db, user.id, "business.major_edit_pending", "business", id,
-                         details={"changed_fields": list(changed_major)})
+        await log_action(
+            db,
+            user.id,
+            "business.major_edit_pending",
+            "business",
+            id,
+            details={"changed_fields": list(changed_major)},
+        )
     else:
         for field, value in update_data.items():
             setattr(business, field, value)
@@ -355,12 +377,20 @@ async def list_branches(id: str, db: AsyncSession = Depends(get_db)):
         )
     )
     branches = result.scalars().all()
-    return [BranchResponse(
-        id=str(b.id), name=b.name, address=b.address,
-        latitude=b.latitude, longitude=b.longitude,
-        phone=b.phone, operating_hours=b.operating_hours,
-        manager_name=b.manager_name, is_active=b.is_active,
-    ) for b in branches]
+    return [
+        BranchResponse(
+            id=str(b.id),
+            name=b.name,
+            address=b.address,
+            latitude=b.latitude,
+            longitude=b.longitude,
+            phone=b.phone,
+            operating_hours=b.operating_hours,
+            manager_name=b.manager_name,
+            is_active=b.is_active,
+        )
+        for b in branches
+    ]
 
 
 @router.post("/{id}/branches", response_model=BranchResponse, status_code=201)
@@ -389,10 +419,15 @@ async def create_branch(
     await db.flush()
 
     return BranchResponse(
-        id=str(branch.id), name=branch.name, address=branch.address,
-        latitude=branch.latitude, longitude=branch.longitude,
-        phone=branch.phone, operating_hours=branch.operating_hours,
-        manager_name=branch.manager_name, is_active=branch.is_active,
+        id=str(branch.id),
+        name=branch.name,
+        address=branch.address,
+        latitude=branch.latitude,
+        longitude=branch.longitude,
+        phone=branch.phone,
+        operating_hours=branch.operating_hours,
+        manager_name=branch.manager_name,
+        is_active=branch.is_active,
     )
 
 
@@ -504,21 +539,27 @@ async def get_verification_status(
         raise HTTPException(status_code=403, detail="Not your business")
 
     doc_result = await db.execute(
-        select(VerificationDocument).where(
+        select(VerificationDocument)
+        .where(
             VerificationDocument.organization_id == id,
-        ).order_by(VerificationDocument.created_at.desc()).limit(5)
+        )
+        .order_by(VerificationDocument.created_at.desc())
+        .limit(5)
     )
     docs = doc_result.scalars().all()
 
     return {
         "is_verified": business.is_verified,
-        "documents": [{
-            "id": str(d.id),
-            "document_type": d.document_type,
-            "status": d.status,
-            "notes": d.notes,
-            "created_at": d.created_at,
-        } for d in docs],
+        "documents": [
+            {
+                "id": str(d.id),
+                "document_type": d.document_type,
+                "status": d.status,
+                "notes": d.notes,
+                "created_at": d.created_at,
+            }
+            for d in docs
+        ],
     }
 
 
@@ -561,7 +602,8 @@ async def purchase_premier(
     try:
         gw = get_gateway(req.payment_gateway)
         intent = await gw.create_payment(
-            req.amount, req.currency,
+            req.amount,
+            req.currency,
             {"purpose": "premier", "business_id": id},
         )
     except ValueError:
@@ -618,10 +660,12 @@ async def confirm_premier(
         raise HTTPException(status_code=403, detail="Not your business")
 
     sub_result = await db.execute(
-        select(PremierSubscription).where(
+        select(PremierSubscription)
+        .where(
             PremierSubscription.organization_id == id,
             PremierSubscription.status == "pending",
-        ).order_by(PremierSubscription.created_at.desc())
+        )
+        .order_by(PremierSubscription.created_at.desc())
     )
     subscription = sub_result.scalar_one_or_none()
     if not subscription:
@@ -641,13 +685,16 @@ async def confirm_premier(
 
         await log_action(db, user.id, "premier.activate", "business", id)
         await create_notification(
-            db, str(user.id), "premier.activated",
+            db,
+            str(user.id),
+            "premier.activated",
             "Premier Listing Activated",
             f"Your business '{business.name}' is now a Premier listing for 30 days.",
         )
         return {"message": "Premier subscription activated for 30 days"}
 
     return {"message": "Payment not yet confirmed", "status": subscription.status}
+
 
 @router.post("/{id}/deactivate", response_model=MessageResponse)
 async def deactivate_business(

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
-import { Building2, Heart, GraduationCap, MapPin, ArrowRight, ArrowLeft, Upload, Image } from 'lucide-react'
+import { Building2, Heart, GraduationCap, MapPin, ArrowRight, ArrowLeft, Upload, Image, Stethoscope, UtensilsCrossed, Hotel } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import api from '@/lib/api-client'
 import { Card, Button, Input } from '@/components/ui'
@@ -13,6 +13,9 @@ const ORG_TYPES = [
   { id: 'mosque', name: 'Mosque or Islamic Center', icon: MapPin, desc: 'Places of worship, community centers.' },
   { id: 'charity', name: 'Charity or NGO', icon: Heart, desc: 'Non-profits, relief organizations, foundations.' },
   { id: 'education', name: 'Educational Institution', icon: GraduationCap, desc: 'Schools, madrasas, universities, institutes.' },
+  { id: 'hospital', name: 'Hospital / Healthcare', icon: Stethoscope, desc: 'Hospitals, clinics, pharmacies, healthcare providers.' },
+  { id: 'hotel', name: 'Hotel / Lodging', icon: Hotel, desc: 'Hotels, guesthouses, lodges, accommodation.' },
+  { id: 'restaurant', name: 'Restaurant / Dining', icon: UtensilsCrossed, desc: 'Halal restaurants, cafés, caterers, food services.' },
 ]
 
 export default function CreateOrganizationWizard() {
@@ -73,6 +76,9 @@ export default function CreateOrganizationWizard() {
         case 'mosque': endpoint = '/mosques'; break;
         case 'charity': endpoint = '/charities'; break;
         case 'education': endpoint = '/education'; break;
+        case 'hospital': endpoint = '/hospitals'; break;
+        case 'hotel': endpoint = '/hotels'; break;
+        case 'restaurant': endpoint = '/restaurants'; break;
         default: throw new Error('Invalid organization type')
       }
 

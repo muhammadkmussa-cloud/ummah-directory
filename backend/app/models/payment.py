@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import uuid
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, ForeignKey, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
-from typing import TYPE_CHECKING
 
 from app.models.base import BaseModelMixin
 
@@ -21,7 +20,10 @@ class PaymentProvider(BaseModelMixin):
 
     name: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    credentials: Mapped[dict | None] = mapped_column(JSONB, nullable=True)  # Store API keys securely or use for settings
+    credentials: Mapped[dict | None] = mapped_column(
+        JSONB, nullable=True
+    )  # Store API keys securely or use for settings
+
 
 class Payment(BaseModelMixin):
     __tablename__ = "payments"

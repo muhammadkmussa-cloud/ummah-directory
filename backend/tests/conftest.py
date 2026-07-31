@@ -1,12 +1,14 @@
 import os
+
 import pytest_asyncio
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy import create_engine, text
-from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.types import JSON
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.pool import NullPool
+from sqlalchemy.types import JSON
+
 
 # Register SQLite JSONB compilation hook for SQLite compatibility
 @compiles(JSONB, "sqlite")
@@ -14,9 +16,9 @@ def compile_jsonb_sqlite(type_, compiler, **kw):
     return compiler.visit_JSON(JSON(), **kw)
 
 
-from app.main import app
-from app.core.config import settings
 import app.core.database as db_module
+from app.core.config import settings
+from app.main import app
 from app.models import *  # noqa: F401, F403
 
 
@@ -73,7 +75,6 @@ async def setup_db():
                 print(f"Error removing {TEST_DB_FILE}: {e}")
 
 
-
 @pytest_asyncio.fixture
 async def db_session():
     async with db_module.async_session_factory() as session:
@@ -85,7 +86,8 @@ async def sample_category():
     with sync_engine.begin() as conn:
         conn.execute(
             text("""INSERT INTO categories (id, name, slug, is_active, sort_order)
-                     VALUES ('00000000-0000-0000-0000-000000000001', 'Test Category', 'test-category', true, 0)
+                     VALUES ('00000000-0000-0000-0000-000000000001',
+                             'Test Category', 'test-category', true, 0)
                      ON CONFLICT (id) DO NOTHING""")
         )
     return "00000000-0000-0000-0000-000000000001"
@@ -100,30 +102,40 @@ async def api_client():
 
 @pytest_asyncio.fixture
 async def registered_user(api_client):
-    resp = await api_client.post("/api/v1/auth/register", json={
-        "email": "user@example.org",
-        "password": "StrongPass1234!",
-        "full_name": "Test User",
-    })
+    resp = await api_client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "user@example.org",
+            "password": "StrongPass1234!",
+            "full_name": "Test User",
+        },
+    )
     return resp.json()
 
 
 @pytest_asyncio.fixture
 async def verified_user(api_client):
-    resp = await api_client.post("/api/v1/auth/register", json={
-        "email": "verified@example.org",
-        "password": "StrongPass1234!",
-        "full_name": "Verified User",
-    })
+    resp = await api_client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "verified@example.org",
+            "password": "StrongPass1234!",
+            "full_name": "Verified User",
+        },
+    )
     with sync_engine.begin() as conn:
-        conn.execute(text("UPDATE users SET is_email_verified = TRUE WHERE email = 'verified@example.org'"))
+        conn.execute(
+            text("UPDATE users SET is_email_verified = TRUE WHERE email = 'verified@example.org'")
+        )
     return resp.json()
 
 
 @pytest_asyncio.fixture
 async def auth_token(api_client):
     import uuid
+
     from passlib.context import CryptContext
+
     uid = uuid.uuid4()
     email = f"auth-{uid.hex[:8]}@example.org"
     pwd = CryptContext(schemes=["bcrypt"], deprecated="auto").hash("StrongPass1234!")
@@ -135,16 +147,24 @@ async def auth_token(api_client):
             role_id = str(row[0])
         else:
             new_id = str(uuid.uuid4())
-            conn.execute(text(f"INSERT INTO roles (id, name) VALUES ('{new_id}', 'registered_user')"))
+            conn.execute(
+                text(f"INSERT INTO roles (id, name) VALUES ('{new_id}', 'registered_user')")
+            )
             role_id = new_id
-        conn.execute(text(f"""
-            INSERT INTO users (id, email, full_name, password_hash, is_email_verified, is_active, role_id, preferred_language)
+        conn.execute(
+            text(f"""
+            INSERT INTO users (id, email, full_name, password_hash, is_email_verified,
+                               is_active, role_id, preferred_language)
             VALUES ('{uid}', '{email}', 'Auth User', '{pwd}', TRUE, TRUE, '{role_id}', 'en')
-        """))
-    resp = await api_client.post("/api/v1/auth/login", json={
-        "email": email,
-        "password": "StrongPass1234!",
-    })
+        """)
+        )
+    resp = await api_client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": email,
+            "password": "StrongPass1234!",
+        },
+    )
     return resp.json()["access_token"]
 
 

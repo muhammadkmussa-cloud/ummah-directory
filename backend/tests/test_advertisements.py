@@ -38,11 +38,15 @@ async def test_create_ad(api_client: AsyncClient, auth_headers: dict):
 
 @pytest.mark.asyncio
 async def test_track_impression(api_client: AsyncClient):
-    resp = await api_client.post("/api/v1/advertisements/00000000-0000-0000-0000-000000000000/impression")
+    resp = await api_client.post(
+        "/api/v1/advertisements/00000000-0000-0000-0000-000000000000/impression"
+    )
     assert resp.status_code == 200
 
 
 @pytest.mark.asyncio
 async def test_track_click(api_client: AsyncClient):
-    resp = await api_client.post("/api/v1/advertisements/00000000-0000-0000-0000-000000000000/click")
+    resp = await api_client.post(
+        "/api/v1/advertisements/00000000-0000-0000-0000-000000000000/click"
+    )
     assert resp.status_code == 200

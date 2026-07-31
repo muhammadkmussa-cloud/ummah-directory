@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -40,24 +41,37 @@ async def list_events(
     result = await db.execute(query)
 
     return PaginatedResponse(
-        items=[{
-            "id": str(e.id), "title": e.title, "slug": e.slug,
-            "description": e.description,
-            "event_date": e.event_date, "event_time": e.event_time,
-            "venue": e.venue, "latitude": e.latitude, "longitude": e.longitude,
-            "registration_link": e.registration_link,
-            "cover_image_url": e.cover_image_url,
-            "category": e.category,
-            "registration_count": e.registration_count,
-            "organizer_type": "organization" if e.organization_id else "individual",
-            "created_at": e.created_at,
-        } for e in result.scalars().all()],
-        total=total, page=page, size=size, pages=(total + size - 1) // size,
+        items=[
+            {
+                "id": str(e.id),
+                "title": e.title,
+                "slug": e.slug,
+                "description": e.description,
+                "event_date": e.event_date,
+                "event_time": e.event_time,
+                "venue": e.venue,
+                "latitude": e.latitude,
+                "longitude": e.longitude,
+                "registration_link": e.registration_link,
+                "cover_image_url": e.cover_image_url,
+                "category": e.category,
+                "registration_count": e.registration_count,
+                "organizer_type": "organization" if e.organization_id else "individual",
+                "created_at": e.created_at,
+            }
+            for e in result.scalars().all()
+        ],
+        total=total,
+        page=page,
+        size=size,
+        pages=(total + size - 1) // size,
     )
 
 
 import uuid
+
 from sqlalchemy import or_
+
 
 @router.get("/{slug}", response_model=EventResponse)
 async def get_event(slug: str, db: AsyncSession = Depends(get_db)):
@@ -72,13 +86,19 @@ async def get_event(slug: str, db: AsyncSession = Depends(get_db)):
     if not e:
         raise HTTPException(status_code=404, detail="Event not found")
     return EventResponse(
-        id=str(e.id), title=e.title, slug=e.slug,
+        id=str(e.id),
+        title=e.title,
+        slug=e.slug,
         description=e.description,
-        event_date=e.event_date, event_time=e.event_time,
-        venue=e.venue, latitude=e.latitude, longitude=e.longitude,
+        event_date=e.event_date,
+        event_time=e.event_time,
+        venue=e.venue,
+        latitude=e.latitude,
+        longitude=e.longitude,
         registration_link=e.registration_link,
         cover_image_url=e.cover_image_url,
-        category=e.category, status=e.status,
+        category=e.category,
+        status=e.status,
         registration_count=e.registration_count,
         organizer_type="organization" if e.organization_id else "individual",
         created_at=e.created_at,
@@ -105,13 +125,18 @@ async def create_event(
         counter += 1
 
     event = Event(
-        title=req.title, slug=slug,
+        title=req.title,
+        slug=slug,
         description=req.description,
-        event_date=req.event_date, event_time=req.event_time,
-        venue=req.venue, latitude=req.latitude, longitude=req.longitude,
+        event_date=req.event_date,
+        event_time=req.event_time,
+        venue=req.venue,
+        latitude=req.latitude,
+        longitude=req.longitude,
         registration_link=req.registration_link,
         category=req.category,
-        organizer_type=req.organizer_type, organizer_id=req.organizer_id,
+        organizer_type=req.organizer_type,
+        organizer_id=req.organizer_id,
         status="published",
     )
     db.add(event)
@@ -119,13 +144,19 @@ async def create_event(
     await log_action(db, user.id, "event.create", "event", str(event.id))
 
     return EventResponse(
-        id=str(event.id), title=event.title, slug=event.slug,
+        id=str(event.id),
+        title=event.title,
+        slug=event.slug,
         description=event.description,
-        event_date=event.event_date, event_time=event.event_time,
-        venue=event.venue, latitude=event.latitude, longitude=event.longitude,
+        event_date=event.event_date,
+        event_time=event.event_time,
+        venue=event.venue,
+        latitude=event.latitude,
+        longitude=event.longitude,
         registration_link=event.registration_link,
         cover_image_url=event.cover_image_url,
-        category=event.category, status=event.status,
+        category=event.category,
+        status=event.status,
         registration_count=event.registration_count,
         organizer_type=event.organization.organization_type if event.organization else None,
         created_at=event.created_at,
@@ -144,16 +175,14 @@ async def save_event(
     try:
         event_uuid = uuid.UUID(id)
     except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid event ID")
+        raise HTTPException(status_code=400, detail="Invalid event ID") from None
 
     event = await db.get(Event, event_uuid)
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
 
     existing = await db.execute(
-        select(SavedEvent).where(
-            SavedEvent.user_id == user.id, SavedEvent.event_id == event_uuid
-        )
+        select(SavedEvent).where(SavedEvent.user_id == user.id, SavedEvent.event_id == event_uuid)
     )
     if existing.scalar_one_or_none():
         return {"message": "Event already saved"}
@@ -172,12 +201,10 @@ async def unsave_event(
     try:
         event_uuid = uuid.UUID(id)
     except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid event ID")
+        raise HTTPException(status_code=400, detail="Invalid event ID") from None
 
     result = await db.execute(
-        select(SavedEvent).where(
-            SavedEvent.user_id == user.id, SavedEvent.event_id == event_uuid
-        )
+        select(SavedEvent).where(SavedEvent.user_id == user.id, SavedEvent.event_id == event_uuid)
     )
     saved = result.scalar_one_or_none()
     if not saved:
@@ -200,7 +227,7 @@ async def register_for_event(
     try:
         event_uuid = uuid.UUID(id)
     except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid event ID")
+        raise HTTPException(status_code=400, detail="Invalid event ID") from None
 
     event = await db.get(Event, event_uuid)
     if not event:
@@ -233,13 +260,19 @@ async def update_event(
 
     await log_action(db, user.id, "event.update", "event", id)
     return EventResponse(
-        id=str(event.id), title=event.title, slug=event.slug,
+        id=str(event.id),
+        title=event.title,
+        slug=event.slug,
         description=event.description,
-        event_date=event.event_date, event_time=event.event_time,
-        venue=event.venue, latitude=event.latitude, longitude=event.longitude,
+        event_date=event.event_date,
+        event_time=event.event_time,
+        venue=event.venue,
+        latitude=event.latitude,
+        longitude=event.longitude,
         registration_link=event.registration_link,
         cover_image_url=event.cover_image_url,
-        category=event.category, status=event.status,
+        category=event.category,
+        status=event.status,
         registration_count=event.registration_count,
         organizer_type=event.organization.organization_type if event.organization else None,
         created_at=event.created_at,
@@ -272,6 +305,7 @@ async def download_calendar_ics(
     db: AsyncSession = Depends(get_db),
 ):
     from fastapi.responses import PlainTextResponse
+
     try:
         event_uuid = uuid.UUID(id)
         stmt = select(Event).where(Event.id == event_uuid)
@@ -286,9 +320,13 @@ async def download_calendar_ics(
     # Build .ics content
     from datetime import timezone
 
-    event_dt = event.event_date.replace(tzinfo=timezone.utc) if event.event_date and not event.event_date.tzinfo else event.event_date
+    event_dt = (
+        event.event_date.replace(tzinfo=UTC)
+        if event.event_date and not event.event_date.tzinfo
+        else event.event_date
+    )
     uid_str = str(event.id)
-    now_stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    now_stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     dt_start = event_dt.strftime("%Y%m%dT%H%M%SZ") if event_dt else ""
 
     lines = [
@@ -312,10 +350,12 @@ async def download_calendar_ics(
     if event.registration_link:
         lines.append(f"URL:{event.registration_link}")
 
-    lines.extend([
-        "END:VEVENT",
-        "END:VCALENDAR",
-    ])
+    lines.extend(
+        [
+            "END:VEVENT",
+            "END:VCALENDAR",
+        ]
+    )
 
     ics_content = "\r\n".join(lines) + "\r\n"
     return PlainTextResponse(
