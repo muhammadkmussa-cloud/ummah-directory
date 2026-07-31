@@ -97,25 +97,76 @@ class MpesaGateway(PaymentGateway):
         return await self.stk_push(phone, amount, account_ref)
 
     async def verify_webhook(self, payload: bytes, headers: dict) -> PaymentEvent | None:
-        data = json.loads(payload)
+        secret = getattr(settings, "mpesa_webhook_secret", "")
+        normalized_headers = {k.lower(): v for k, v in headers.items()}
+        if secret:
+            token = (
+                normalized_headers.get("x-mpesa-token")
+                or normalized_headers.get("x-webhook-secret")
+                or normalized_headers.get("authorization", "").replace("Bearer ", "").strip()
+            )
+            if token != secret:
+                return None
+
+        try:
+            data = json.loads(payload)
+        except (json.JSONDecodeError, TypeError, ValueError):
+            return None
+
+        if not isinstance(data, dict):
+            return None
+
         body = data.get("Body", {})
+        if not isinstance(body, dict):
+            return None
+
         stk = body.get("stkCallback", {})
+        if not isinstance(stk, dict):
+            return None
 
-        result_code = stk.get("ResultCode", 1)
         checkout_id = stk.get("CheckoutRequestID", "")
+        if not checkout_id:
+            return None
 
-        if result_code == 0:
+        callback_result_code = stk.get("ResultCode", 1)
+
+        # Perform out-of-band status query against Safaricom API
+        try:
+            query_result = await self.query_status(checkout_id)
+        except Exception as exc:
+            return PaymentEvent(
+                event_id=checkout_id,
+                type="payment.failed",
+                gateway_payment_id=checkout_id,
+                status="failed",
+                amount=Decimal("0"),
+                currency="KES",
+                metadata={
+                    "result_code": callback_result_code,
+                    "error": f"Out-of-band verification query failed: {str(exc)}",
+                },
+            )
+
+        out_of_band_code = (
+            query_result.get("ResultCode") if isinstance(query_result, dict) else None
+        )
+        is_oob_success = out_of_band_code in (0, "0")
+        is_callback_success = callback_result_code in (0, "0")
+
+        if is_callback_success and is_oob_success:
             metadata_items = stk.get("CallbackMetadata", {}).get("Item", [])
             amount = "0"
             receipt = ""
             phone = ""
-            for item in metadata_items:
-                if item.get("Name") == "Amount":
-                    amount = str(item.get("Value", 0))
-                elif item.get("Name") == "MpesaReceiptNumber":
-                    receipt = str(item.get("Value", ""))
-                elif item.get("Name") == "PhoneNumber":
-                    phone = str(item.get("Value", ""))
+            if isinstance(metadata_items, list):
+                for item in metadata_items:
+                    if isinstance(item, dict):
+                        if item.get("Name") == "Amount":
+                            amount = str(item.get("Value", 0))
+                        elif item.get("Name") == "MpesaReceiptNumber":
+                            receipt = str(item.get("Value", ""))
+                        elif item.get("Name") == "PhoneNumber":
+                            phone = str(item.get("Value", ""))
 
             return PaymentEvent(
                 event_id=checkout_id,
@@ -124,9 +175,20 @@ class MpesaGateway(PaymentGateway):
                 status="succeeded",
                 amount=Decimal(amount),
                 currency="KES",
-                metadata={"receipt": receipt, "phone": phone, "checkout_id": checkout_id},
+                metadata={
+                    "receipt": receipt,
+                    "phone": phone,
+                    "checkout_id": checkout_id,
+                    "query_response": query_result,
+                },
             )
         else:
+            res_code = out_of_band_code if out_of_band_code is not None else callback_result_code
+            desc = (
+                query_result.get("ResultDesc")
+                if isinstance(query_result, dict) and query_result.get("ResultDesc")
+                else stk.get("ResultDesc", "")
+            )
             return PaymentEvent(
                 event_id=checkout_id,
                 type="payment.failed",
@@ -134,7 +196,7 @@ class MpesaGateway(PaymentGateway):
                 status="failed",
                 amount=Decimal("0"),
                 currency="KES",
-                metadata={"result_code": result_code, "description": stk.get("ResultDesc", "")},
+                metadata={"result_code": res_code, "description": desc},
             )
 
     async def refund(self, payment_id: str, amount: Decimal | None = None) -> bool:

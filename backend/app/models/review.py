@@ -7,8 +7,13 @@ from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from typing import TYPE_CHECKING
+
 from app.models.base import BaseModelMixin
 from app.models.organization import Organization
+
+if TYPE_CHECKING:
+    from app.models.user import User
 
 
 class Review(BaseModelMixin):

@@ -9,6 +9,7 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_user, require_email_verified, require_permission
 from app.models.charity import Charity, CharityCampaign
 from app.models.donation import Donation
+from app.models.organization import Organization
 from app.models.payment import Payment
 from app.models.user import User
 from app.payments import get_gateway
@@ -62,21 +63,43 @@ async def initiate_donation(
             detail=f"Minimum donation amount is {settings.min_donation_amount} {req.currency}",
         )
 
-    campaign_result = await db.execute(
-        select(CharityCampaign).where(CharityCampaign.id == req.campaign_id)
-    )
-    campaign = campaign_result.scalar_one_or_none()
-    if not campaign:
-        raise HTTPException(status_code=404, detail="Campaign not found")
-    if campaign.status != "active":
-        raise HTTPException(status_code=400, detail="Campaign is not active")
+    organization_id = None
+    campaign = None
+    org_name = ""
 
-    charity_result = await db.execute(
-        select(Charity).where(Charity.id == campaign.charity_id, Charity.is_verified)
-    )
-    charity = charity_result.scalar_one_or_none()
-    if not charity:
-        raise HTTPException(status_code=400, detail="Charity is not verified")
+    # Path 1: Donation via a campaign
+    if req.campaign_id:
+        campaign_result = await db.execute(
+            select(CharityCampaign).where(CharityCampaign.id == req.campaign_id)
+        )
+        campaign = campaign_result.scalar_one_or_none()
+        if not campaign:
+            raise HTTPException(status_code=404, detail="Campaign not found")
+        if campaign.status != "active":
+            raise HTTPException(status_code=400, detail="Campaign is not active")
+
+        charity_result = await db.execute(
+            select(Charity).where(Charity.id == campaign.charity_id, Charity.is_verified)
+        )
+        charity = charity_result.scalar_one_or_none()
+        if not charity:
+            raise HTTPException(status_code=400, detail="Charity is not verified")
+
+        organization_id = campaign.charity_id
+        org_name = charity.name
+
+    # Path 2: Direct donation to a verified organization
+    elif req.organization_id:
+        org_uuid = uuid.UUID(req.organization_id) if isinstance(req.organization_id, str) else req.organization_id
+        org = await db.get(Organization, org_uuid)
+        if not org:
+            raise HTTPException(status_code=404, detail="Organization not found")
+        if org.status != "approved":
+            raise HTTPException(status_code=400, detail="Organization is not approved for donations")
+        organization_id = org.id
+        org_name = org.name
+    else:
+        raise HTTPException(status_code=400, detail="Either campaign_id or organization_id is required")
 
     if req.idempotency_key:
         existing = await db.execute(
@@ -99,8 +122,8 @@ async def initiate_donation(
         receipt_number=receipt,
         idempotency_key=req.idempotency_key,
         donor_id=user.id,
-        charity_id=campaign.charity_id,
-        campaign_id=campaign.id,
+        organization_id=organization_id,
+        campaign_id=campaign.id if campaign else None,
         status="pending",
     )
     db.add(donation)
@@ -110,7 +133,7 @@ async def initiate_donation(
         gw = get_gateway(req.payment_gateway)
         intent = await gw.create_payment(
             req.amount, req.currency,
-            {"donation_id": str(donation.id), "campaign": campaign.title},
+            {"donation_id": str(donation.id), "organization": org_name},
         )
 
         payment = Payment(
@@ -165,30 +188,34 @@ async def confirm_donation(
     if payment and payment.status == "succeeded":
         donation.status = "completed"
 
-        campaign = await db.execute(
-            select(CharityCampaign).where(CharityCampaign.id == donation.campaign_id)
-        )
-        campaign = campaign.scalar_one_or_none()
-        if campaign:
-            campaign.amount_raised = (campaign.amount_raised or 0) + donation.amount
+        # Update campaign raised amount if applicable
+        campaign = None
+        if donation.campaign_id:
+            campaign_res = await db.execute(
+                select(CharityCampaign).where(CharityCampaign.id == donation.campaign_id)
+            )
+            campaign = campaign_res.scalar_one_or_none()
+            if campaign:
+                campaign.amount_raised = (campaign.amount_raised or 0) + donation.amount
 
-        charity_name = ""
-        if donation.charity_id:
-            ch_result = await db.execute(select(Charity).where(Charity.id == donation.charity_id))
-            charity_obj = ch_result.scalar_one_or_none()
-            if charity_obj:
-                charity_name = charity_obj.name
+        # Get organization name for notifications
+        org_name = ""
+        if donation.organization_id:
+            org_result = await db.execute(select(Organization).where(Organization.id == donation.organization_id))
+            org_obj = org_result.scalar_one_or_none()
+            if org_obj:
+                org_name = org_obj.name
 
         await create_notification(
             db, str(donation.donor_id), "donation.confirmed",
             "Donation confirmed",
-            f"Your donation of {donation.amount} {donation.currency} to {campaign.title if campaign else 'charity'} was successful.",
+            f"Your donation of {donation.amount} {donation.currency} to {campaign.title if campaign else org_name} was successful.",
         )
 
         email_html = render_email_template(
             "donation_receipt",
             amount=f"{donation.amount} {donation.currency}",
-            charity=charity_name,
+            charity=org_name,
             receipt=donation.receipt_number,
         )
         await send_email(user.email, "Donation Confirmed", email_html)
@@ -217,7 +244,7 @@ async def donation_history(
             "currency": d.currency, "status": d.status,
             "receipt_number": d.receipt_number,
             "is_anonymous": d.is_anonymous,
-            "charity_id": str(d.charity_id),
+            "organization_id": str(d.organization_id),
             "campaign_id": str(d.campaign_id) if d.campaign_id else None,
             "created_at": d.created_at,
         } for d in result.scalars().all()],
@@ -240,19 +267,19 @@ async def download_receipt_pdf(
         raise HTTPException(status_code=403, detail="Not your donation")
 
     campaign = None
-    charity_name = ""
+    org_name = ""
     if donation.campaign_id:
         c_result = await db.execute(
             select(CharityCampaign).where(CharityCampaign.id == donation.campaign_id)
         )
         campaign = c_result.scalar_one_or_none()
-    if donation.charity_id:
-        ch_result = await db.execute(select(Charity).where(Charity.id == donation.charity_id))
-        charity = ch_result.scalar_one_or_none()
-        if charity:
-            charity_name = charity.name
+    if donation.organization_id:
+        org_result = await db.execute(select(Organization).where(Organization.id == donation.organization_id))
+        org_obj = org_result.scalar_one_or_none()
+        if org_obj:
+            org_name = org_obj.name
 
-    pdf_bytes = _generate_pdf_receipt(donation, charity_name, campaign.title if campaign else None)
+    pdf_bytes = _generate_pdf_receipt(donation, org_name, campaign.title if campaign else None)
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
@@ -274,24 +301,24 @@ async def get_receipt(
         raise HTTPException(status_code=403, detail="Not your donation")
 
     campaign = None
-    charity_name = ""
+    org_name = ""
     if donation.campaign_id:
         c_result = await db.execute(
             select(CharityCampaign).where(CharityCampaign.id == donation.campaign_id)
         )
         campaign = c_result.scalar_one_or_none()
-    if donation.charity_id:
-        ch_result = await db.execute(select(Charity).where(Charity.id == donation.charity_id))
-        charity = ch_result.scalar_one_or_none()
-        if charity:
-            charity_name = charity.name
+    if donation.organization_id:
+        org_result = await db.execute(select(Organization).where(Organization.id == donation.organization_id))
+        org_obj = org_result.scalar_one_or_none()
+        if org_obj:
+            org_name = org_obj.name
 
     return {
         "receipt_number": donation.receipt_number,
         "donation_date": donation.created_at,
         "amount": str(donation.amount),
         "currency": donation.currency,
-        "charity_name": charity_name,
+        "organization_name": org_name,
         "campaign_name": campaign.title if campaign else None,
         "status": donation.status,
         "is_anonymous": donation.is_anonymous,

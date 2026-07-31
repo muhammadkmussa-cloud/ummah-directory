@@ -15,6 +15,7 @@ from app.api.v1.endpoints import (
     events,
     favorites,
     files,
+
     mfa,
     mosques,
     notifications,
@@ -53,6 +54,7 @@ api_router.include_router(notifications.router, prefix="/notifications", tags=["
 api_router.include_router(favorites.router, prefix="/favorites", tags=["Favorites"])
 api_router.include_router(reports.router, prefix="/reports", tags=["Reports"])
 api_router.include_router(advertisements.router, prefix="/advertisements", tags=["Advertisements"])
+
 api_router.include_router(cms.router, prefix="/cms", tags=["CMS"])
 api_router.include_router(admin.router, prefix="/admin", tags=["Admin"])
 api_router.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])

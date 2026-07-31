@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { MapPin, Phone, Globe, ChevronLeft, Heart, Target, Share2, Info, Users, Calendar } from 'lucide-react'
+import { MapPin, Phone, Globe, ChevronLeft, Heart, Target, Share2, Info, Users, Calendar, Edit2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import api from '@/lib/api-client'
 import { Card, Badge, Button, Modal } from '@/components/ui'
@@ -10,12 +10,14 @@ import { formatCurrency } from '@/lib/utils'
 import { FavoriteButton } from '@/features/favorites/FavoriteButton'
 import { ReportButton } from '@/features/reports/ReportButton'
 import MediaGallery from '@/components/ui/MediaGallery'
+import OrganizationEditSheet from '@/features/organizations/OrganizationEditSheet'
 
 export default function CharityDetailPage() {
   const { slug } = useParams()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('About')
   const [viewDonorsCampaignId, setViewDonorsCampaignId] = useState<string | null>(null)
+  const [isEditing, setIsEditing] = useState(false)
 
   const { data: user } = useQuery({
     queryKey: ['user'],
@@ -43,6 +45,7 @@ export default function CharityDetailPage() {
   if (!charity) return <div className="text-center py-20 text-surface-500 font-medium">Charity not found</div>
 
   const isOwnerOrAdmin = user && (user.id === charity.owner_id || ['super_admin', 'admin', 'moderator'].includes(user.role?.name))
+  const isOwner = user && user.id === charity.owner_id
 
   return (
     <div className="min-h-screen bg-surface-50 pb-20 md:pb-0">
@@ -65,9 +68,15 @@ export default function CharityDetailPage() {
             <ChevronLeft className="w-6 h-6" />
           </button>
           <div className="flex gap-2">
-            <button className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/30 transition">
-              <Share2 className="w-5 h-5" />
-            </button>
+            {isOwner && (
+              <button
+                onClick={() => setIsEditing(true)}
+                className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/30 transition"
+                title="Edit organization"
+              >
+                <Edit2 className="w-5 h-5" />
+              </button>
+            )}
             <FavoriteButton 
               organizationId={charity.id} 
               className="w-10 h-10 bg-white/20 backdrop-blur-md text-white hover:bg-white/30" 
@@ -254,6 +263,13 @@ export default function CharityDetailPage() {
           )}
         </Modal>
       )}
+
+      <OrganizationEditSheet
+        isOpen={isEditing}
+        onClose={() => setIsEditing(false)}
+        organization={charity}
+        queryKey={['charity', slug]}
+      />
     </div>
   )
 }

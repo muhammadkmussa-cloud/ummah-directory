@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
-import { Building2, Heart, GraduationCap, MapPin, ArrowRight, ArrowLeft } from 'lucide-react'
+import { Building2, Heart, GraduationCap, MapPin, ArrowRight, ArrowLeft, Upload, Image } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import api from '@/lib/api-client'
 import { Card, Button, Input } from '@/components/ui'
+import ImageUploader from '@/components/ui/ImageUploader'
 import type { Category } from '@/types'
 
 const ORG_TYPES = [
@@ -19,6 +20,8 @@ export default function CreateOrganizationWizard() {
   const [step, setStep] = useState(1)
   const [selectedType, setSelectedType] = useState<string | null>(null)
   const [error, setError] = useState('')
+  const [logoUrl, setLogoUrl] = useState<string | null>(null)
+  const [coverUrl, setCoverUrl] = useState<string | null>(null)
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<any>()
 
@@ -43,14 +46,24 @@ export default function CreateOrganizationWizard() {
     }
   }
 
+  const handleToMedia = () => {
+    setStep(3)
+  }
+
+  const handleBack = () => {
+    if (step === 2) setStep(1)
+    if (step === 3) setStep(2)
+  }
+
   const onSubmit = async (data: any) => {
     setError('')
     try {
-      // Common transformations
       const payload = {
         ...data,
         latitude: data.latitude ? parseFloat(data.latitude) : undefined,
         longitude: data.longitude ? parseFloat(data.longitude) : undefined,
+        logo_url: logoUrl,
+        cover_image_url: coverUrl,
       }
 
       // Route based on type
@@ -193,10 +206,47 @@ export default function CreateOrganizationWizard() {
             </div>
 
             <div className="flex gap-3 pt-4 border-t border-gray-100">
-              <Button type="submit" loading={isSubmitting} className="w-full sm:w-auto">Submit Registration</Button>
+              <Button type="button" variant="outline" onClick={handleBack}>Back</Button>
+              <Button type="button" onClick={handleToMedia} className="w-full sm:w-auto">Continue to Media</Button>
             </div>
           </Card>
         </form>
+      )}
+
+      {step === 3 && (
+        <Card className="p-6">
+          <h2 className="text-lg font-semibold mb-4">Upload Media</h2>
+          <p className="text-sm text-gray-500 mb-6">Add a logo and cover photo to make your organization stand out.</p>
+
+          <div className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Logo <span className="text-gray-400 font-normal">(recommended: square, at least 200x200)</span>
+              </label>
+              <ImageUploader
+                currentUrl={logoUrl}
+                onUploaded={(url) => setLogoUrl(url)}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Cover Photo <span className="text-gray-400 font-normal">(recommended: 1200x400)</span>
+              </label>
+              <ImageUploader
+                currentUrl={coverUrl}
+                onUploaded={(url) => setCoverUrl(url)}
+              />
+            </div>
+
+            <div className="flex gap-3 pt-4 border-t border-gray-100">
+              <Button type="button" variant="outline" onClick={handleBack}>Back</Button>
+              <Button loading={isSubmitting} className="w-full sm:w-auto" onClick={handleSubmit(onSubmit)}>
+                Submit Registration
+              </Button>
+            </div>
+          </div>
+        </Card>
       )}
     </div>
   )

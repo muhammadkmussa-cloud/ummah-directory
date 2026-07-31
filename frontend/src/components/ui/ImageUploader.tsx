@@ -3,7 +3,9 @@ import { Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react';
 import api from '@/lib/api-client';
 
 interface ImageUploaderProps {
-  onUploadSuccess: (data: { id: string, url: string }) => void;
+  onUploadSuccess?: (data: { id: string, url: string }) => void;
+  onUploaded?: (url: string) => void;
+  currentUrl?: string | null;
   resourceType?: 'business' | 'mosque' | 'charity' | 'education' | 'profile' | 'general' | 'verification';
   resourceId?: string;
   maxSizeMB?: number;
@@ -12,6 +14,8 @@ interface ImageUploaderProps {
 
 export default function ImageUploader({ 
   onUploadSuccess, 
+  onUploaded,
+  currentUrl,
   resourceType = 'general', 
   resourceId, 
   maxSizeMB = 10,
@@ -19,7 +23,7 @@ export default function ImageUploader({
 }: ImageUploaderProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
+  const [preview, setPreview] = useState<string | null>(currentUrl || null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -53,7 +57,8 @@ export default function ImageUploader({
           'Content-Type': 'multipart/form-data',
         },
       });
-      onUploadSuccess(response.data);
+      if (onUploadSuccess) onUploadSuccess(response.data);
+      if (onUploaded) onUploaded(response.data.url);
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Upload failed');
       setPreview(null);

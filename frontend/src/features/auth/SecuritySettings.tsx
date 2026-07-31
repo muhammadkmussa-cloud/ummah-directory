@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Shield, Eye, EyeOff, Lock } from 'lucide-react'
 import api from '@/lib/api-client'
 import { Card, Button, Input } from '@/components/ui'
+import { toast } from 'react-hot-toast'
 
 interface PasswordForm {
   current_password: string
@@ -34,7 +36,8 @@ export default function SecuritySettings() {
   }
 
   return (
-    <Card className="p-6">
+    <div className="space-y-6">
+      <Card className="p-6">
       <div className="flex items-center gap-3 mb-6">
         <div className="p-2 bg-orange-50 rounded-lg">
           <Shield className="w-5 h-5 text-orange-600" />
@@ -103,6 +106,77 @@ export default function SecuritySettings() {
           Update Password
         </Button>
       </form>
+    </Card>
+
+    {/* Login History */}
+    <LoginHistory />
+
+    {/* Active Sessions */}
+    <ActiveSessions />
+    </div>
+  )
+}
+
+function LoginHistory() {
+  const { data, isLoading } = useQuery({
+    queryKey: ['login-history'],
+    queryFn: () => api.get('/users/me/login-history').then(r => r.data),
+  })
+  if (isLoading) return null
+  return (
+    <Card className="p-6 mt-6">
+      <h3 className="font-semibold text-gray-900 mb-4">Login History</h3>
+      {data?.items?.length ? (
+        <div className="space-y-2 max-h-60 overflow-y-auto">
+          {data.items.map((entry: any) => (
+            <div key={entry.id} className="text-xs text-gray-500 flex justify-between border-b border-gray-50 pb-1.5">
+              <span>{entry.ip_address || 'Unknown IP'}</span>
+              <span>{new Date(entry.created_at).toLocaleString()}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-gray-400">No login history available.</p>
+      )}
+    </Card>
+  )
+}
+
+function ActiveSessions() {
+  const queryClient = useQueryClient()
+  const { data, isLoading } = useQuery({
+    queryKey: ['active-sessions'],
+    queryFn: () => api.get('/users/me/sessions').then(r => r.data),
+  })
+  const logoutAll = useMutation({
+    mutationFn: () => api.post('/users/me/sessions/logout-all'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['active-sessions'] })
+      toast.success('All other sessions logged out')
+    },
+    onError: () => toast.error('Failed to log out sessions'),
+  })
+  if (isLoading) return null
+  return (
+    <Card className="p-6 mt-6">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-semibold text-gray-900">Active Sessions</h3>
+        <Button variant="outline" size="sm" onClick={() => logoutAll.mutate()} loading={logoutAll.isPending}>
+          Log Out All Others
+        </Button>
+      </div>
+      {data?.sessions?.length ? (
+        <div className="space-y-2">
+          {data.sessions.map((s: any, i: number) => (
+            <div key={i} className="text-xs text-gray-500 flex justify-between border-b border-gray-50 pb-1.5">
+              <span>{s.ip_address || 'Unknown'} · {s.user_agent?.substring(0, 40) || 'Unknown'}</span>
+              <span>{s.logged_in_at ? new Date(s.logged_in_at).toLocaleString() : ''}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-gray-400">No active sessions.</p>
+      )}
     </Card>
   )
 }

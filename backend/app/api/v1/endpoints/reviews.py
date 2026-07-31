@@ -1,7 +1,7 @@
 from datetime import UTC
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -139,7 +139,7 @@ async def create_review(
     )).scalar() or 0
     from app.models.organization import Organization
     await db.execute(
-        Organization.__table__.update().where(Organization.id == organization_id).values(
+        update(Organization).where(Organization.id == organization_id).values(
             avg_rating=avg_rating, review_count=count
         )
     )

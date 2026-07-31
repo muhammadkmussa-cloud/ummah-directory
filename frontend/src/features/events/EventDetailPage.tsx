@@ -158,8 +158,14 @@ export default function EventDetailPage() {
           </div>
 
           <Button variant="outline" onClick={handleAddToCalendar} className="w-full">
-            <Calendar className="w-4 h-4 mr-2" /> Add to Calendar
+            <Calendar className="w-4 h-4 mr-2" /> Add to Google Calendar
           </Button>
+
+          <a href={`/api/v1/events/${event.slug || event.id}/calendar`} download className="block">
+            <Button variant="outline" className="w-full">
+              <Calendar className="w-4 h-4 mr-2" /> Download .ics File
+            </Button>
+          </a>
 
           {event.registration_link && (
             <a href={event.registration_link} target="_blank" rel="noreferrer">

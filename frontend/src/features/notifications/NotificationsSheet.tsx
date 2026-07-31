@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Bell, Check, CheckCircle2, Circle } from 'lucide-react';
+import { Bell, Check, CheckCircle2, Circle, Trash2 } from 'lucide-react';
 import api from '@/lib/api-client';
 import BottomSheet from '@/components/ui/BottomSheet';
 import { Button } from '@/components/ui';
@@ -30,6 +30,11 @@ export function NotificationsSheet({ isOpen, onClose }: NotificationsSheetProps)
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
     },
+  });
+
+  const deleteNotification = useMutation({
+    mutationFn: (id: string) => api.delete(`/notifications/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notifications'] }),
   });
 
   const unreadCount = notifications?.items?.filter((n: any) => !n.is_read).length || 0;
@@ -76,6 +81,13 @@ export function NotificationsSheet({ isOpen, onClose }: NotificationsSheetProps)
                       {new Date(notif.created_at).toLocaleString()}
                     </span>
                   </div>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); deleteNotification.mutate(notif.id); }}
+                    className="p-1 hover:bg-red-50 rounded-lg text-gray-400 hover:text-red-500 transition-colors"
+                    title="Delete notification"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             ))

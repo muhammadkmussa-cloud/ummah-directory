@@ -70,6 +70,24 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* Pending Items Banner */}
+      {((s.pending_organizations || 0) > 0 || (s.pending_claims || 0) > 0) && (
+        <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-amber-100 text-amber-700">
+              <FileText className="w-6 h-6" />
+            </div>
+            <div>
+              <h2 className="font-bold text-base text-amber-900">Pending Items</h2>
+              <p className="text-xs text-amber-700">
+                {(s.pending_organizations || 0) > 0 && `${s.pending_organizations} organization(s) pending review. `}
+                {(s.pending_claims || 0) > 0 && `${s.pending_claims} claim(s) pending review.`}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* User Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
@@ -93,6 +111,7 @@ export default function DashboardPage() {
           { icon: Building2, label: 'Organizations', value: s.organizations ?? s.businesses ?? orgs.length },
           { icon: Bell, label: 'Unread', value: s.unread_notifications ?? 0 },
           { icon: FileText, label: 'Claims', value: s.ownership_claims ?? 0 },
+          { icon: Bell, label: 'Ad Campaigns', value: `${s.active_campaigns ?? 0}/${s.total_campaigns ?? 0}` },
         ].map((stat) => (
           <Card key={stat.label} className="text-center hover:shadow-md transition-shadow">
             <stat.icon className="w-5 h-5 text-emerald-600 mx-auto mb-2" />

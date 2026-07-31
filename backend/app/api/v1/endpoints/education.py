@@ -139,7 +139,8 @@ async def update_institution(
     inst = result.scalar_one_or_none()
     if not inst:
         raise HTTPException(status_code=404, detail="Institution not found")
-    if str(inst.primary_admin_id) != str(user.id):
+    is_owner = str(inst.owner_id) == str(user.id)
+    if not is_owner:
         raise HTTPException(status_code=403, detail="Not authorized")
     for field, value in req.model_dump(exclude_unset=True).items():
         setattr(inst, field, value)
@@ -171,8 +172,8 @@ async def delete_institution(
     inst = result.scalar_one_or_none()
     if not inst:
         raise HTTPException(status_code=404, detail="Institution not found")
-    is_owner = str(inst.primary_admin_id) == str(user.id)
-    is_admin = user.role.name in ("super_admin", "moderator")
+    is_owner = str(inst.owner_id) == str(user.id)
+    is_admin = user.role and user.role.name in ("super_admin", "moderator")
     if not is_owner and not is_admin:
         raise HTTPException(status_code=403, detail="Not authorized")
     inst.soft_delete()

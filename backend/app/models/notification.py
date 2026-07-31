@@ -6,7 +6,12 @@ from sqlalchemy import Boolean, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from typing import TYPE_CHECKING
+
 from app.models.base import BaseModelMixin
+
+if TYPE_CHECKING:
+    from app.models.user import User
 
 
 class Notification(BaseModelMixin):

@@ -52,6 +52,14 @@ class Settings(BaseSettings):
     mpesa_business_shortcode: str = "174379"
     mpesa_callback_url: str = ""
     mpesa_environment: str = "sandbox"
+    mpesa_webhook_secret: str = ""
+
+    sms_provider: str = "log"  # log, twilio, africastalking
+    twilio_account_sid: str = ""
+    twilio_auth_token: str = ""
+    twilio_phone_number: str = ""
+    africastalking_username: str = ""
+    africastalking_api_key: str = ""
 
     min_donation_amount: float = 10.0
     donation_currencies: str = "KES,USD,EUR,GBP"

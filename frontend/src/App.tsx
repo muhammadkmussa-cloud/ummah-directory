@@ -44,6 +44,7 @@ import MapBrowsePage from '@/features/map/MapBrowsePage'
 import MyOrganizations from '@/features/organizations/MyOrganizations'
 import StaffManager from '@/features/organizations/StaffManager'
 import OrganizationProfileView from '@/features/organizations/OrganizationProfileView'
+import CreateOrganizationWizard from '@/features/organizations/CreateOrganizationWizard'
 
 import PageView from '@/pages/PageView'
 import NotFoundPage from '@/pages/NotFoundPage'
@@ -51,6 +52,7 @@ import CampaignDetail from '@/features/ads/CampaignDetail'
 import AnalyticsDashboard from '@/features/analytics/AnalyticsDashboard'
 import PrayerTimesPreferences from '@/features/prayer/PrayerTimesPreferences'
 import PaymentReceiptPage from '@/features/payments/PaymentReceiptPage'
+
 
 import { HelmetProvider } from 'react-helmet-async'
 import LandingPage from '@/pages/landing/LandingPage'
@@ -106,8 +108,10 @@ export default function App() {
             <Route path="/favorites" element={<FavoritesPage />} />
             <Route path="/prayer-times/me" element={<PrayerTimesPreferences />} />
 
+
             {/* Organizations */}
             <Route path="/my-organizations" element={<MyOrganizations />} />
+            <Route path="/organizations/new" element={<AuthRoute><CreateOrganizationWizard /></AuthRoute>} />
             <Route path="/my-organizations/:id/staff" element={<StaffManager />} />
             <Route path="/my-organizations/:slug" element={<OrganizationProfileView />} />
             <Route path="/my-organizations/:id/manage" element={<BusinessManager />} />

@@ -6,7 +6,7 @@ services:
       POSTGRES_PASSWORD: ummah_dev_password
       POSTGRES_DB: ummah_directory
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -32,11 +32,12 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql+asyncpg://ummah:ummah_dev_password@postgres:5432/ummah_directory
-      REDIS_URL: redis://redis:6379/0
-      APP_ENV: development
-      APP_DEBUG: "true"
-      CORS_ORIGINS: http://localhost:5173,http://localhost:3000
+      - PYTHONPATH=/app
+      - DATABASE_URL=postgresql+asyncpg://ummah:ummah_dev_password@postgres:5432/ummah_directory
+      - REDIS_URL=redis://redis:6379/0
+      - APP_ENV=development
+      - APP_DEBUG=true
+      - CORS_ORIGINS=http://localhost:5173,http://localhost:3000
     ports:
       - "8000:8000"
     volumes:
@@ -55,8 +56,9 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql+asyncpg://ummah:ummah_dev_password@postgres:5432/ummah_directory
-      REDIS_URL: redis://redis:6379/0
+      - PYTHONPATH=/app
+      - DATABASE_URL=postgresql+asyncpg://ummah:ummah_dev_password@postgres:5432/ummah_directory
+      - REDIS_URL=redis://redis:6379/0
     volumes:
       - ./backend:/app
     depends_on:
@@ -73,8 +75,9 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql+asyncpg://ummah:ummah_dev_password@postgres:5432/ummah_directory
-      REDIS_URL: redis://redis:6379/0
+      - PYTHONPATH=/app
+      - DATABASE_URL=postgresql+asyncpg://ummah:ummah_dev_password@postgres:5432/ummah_directory
+      - REDIS_URL=redis://redis:6379/0
     volumes:
       - ./backend:/app
     depends_on:
@@ -84,7 +87,7 @@ services:
         condition: service_healthy
 
   mailpit:
-    image: axllent/mailpit:latest
+    image: docker.io/axllent/mailpit:latest
     ports:
       - "8025:8025"
       - "1025:1025"

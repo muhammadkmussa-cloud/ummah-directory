@@ -28,6 +28,13 @@ async def get_owner_dashboard_stats(
 
     result = await db.execute(query)
     stats = result.first()
+    if not stats:
+        return {
+            "total_businesses": 0,
+            "total_views": 0,
+            "total_reviews": 0,
+            "average_rating": 0.0,
+        }
 
     return {
         "total_businesses": stats.total_businesses or 0,

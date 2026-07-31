@@ -1,3 +1,4 @@
+from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -471,15 +472,16 @@ async def list_claims(
 ):
     result = await db.execute(
         select(OwnershipClaim)
-        .options(selectinload(OwnershipClaim.claimant), selectinload(OwnershipClaim.business))
+        .options(selectinload(OwnershipClaim.claimant), selectinload(OwnershipClaim.organization))
         .where(OwnershipClaim.status == "pending")
         .limit(50)
     )
     claims = result.scalars().all()
     return [{
         "id": str(c.id),
-        "business_id": str(c.business_id),
-        "business_name": c.business.name,
+        "organization_id": str(c.organization_id),
+        "organization_type": c.organization_type,
+        "organization_name": c.organization.name if c.organization else "Unknown",
         "claimant_id": str(c.claimant_id),
         "claimant_name": c.claimant.full_name,
         "status": c.status,
@@ -494,7 +496,7 @@ async def approve_claim(
     user: User = Depends(require_role("moderator")),
 ):
     result = await db.execute(
-        select(OwnershipClaim).options(selectinload(OwnershipClaim.business))
+        select(OwnershipClaim).options(selectinload(OwnershipClaim.organization))
         .where(OwnershipClaim.id == id)
     )
     claim = result.scalar_one_or_none()
@@ -505,13 +507,15 @@ async def approve_claim(
 
     claim.status = "approved"
     claim.reviewed_by = user.id
-    claim.business.owner_id = claim.claimant_id
+    if claim.organization:
+        claim.organization.owner_id = claim.claimant_id
     ip, ua = get_client_info(None)
     await log_action(db, user.id, "claim.approve", "claim", id, ip_address=ip, user_agent=ua)
+    org_name = claim.organization.name if claim.organization else "your organization"
     await create_notification(
         db, str(claim.claimant_id), "claim.approved",
         "Ownership claim approved",
-        f"Your claim for '{claim.business.name}' has been approved. You are now the owner.",
+        f"Your claim for '{org_name}' has been approved. You are now the owner.",
     )
     return {"message": "Claim approved, ownership transferred"}
 
@@ -524,7 +528,10 @@ async def reject_claim(
     user: User = Depends(require_role("moderator")),
 ):
     reason = req.reason
-    result = await db.execute(select(OwnershipClaim).where(OwnershipClaim.id == id))
+    result = await db.execute(
+        select(OwnershipClaim).options(selectinload(OwnershipClaim.organization))
+        .where(OwnershipClaim.id == id)
+    )
     claim = result.scalar_one_or_none()
     if not claim:
         raise HTTPException(status_code=404, detail="Claim not found")
@@ -536,10 +543,11 @@ async def reject_claim(
     ip, ua = get_client_info(None)
     await log_action(db, user.id, "claim.reject", "claim", id,
                      details={"reason": sanitize_text(reason)}, ip_address=ip, user_agent=ua)
+    org_name = claim.organization.name if claim.organization else "your organization"
     await create_notification(
         db, str(claim.claimant_id), "claim.rejected",
         "Ownership claim rejected",
-        f"Your claim for '{claim.business.name}' has been rejected.{' Reason: ' + sanitize_text(reason) if reason else ''}",
+        f"Your claim for '{org_name}' has been rejected.{' Reason: ' + sanitize_text(reason) if reason else ''}",
     )
     return {"message": "Claim rejected"}
 
@@ -828,7 +836,7 @@ async def admin_list_campaigns(
 
 @router.post("/campaigns/{id}/approve")
 async def admin_approve_campaign(
-    id: int,
+    id: UUID,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(require_role("moderator")),
 ):
@@ -840,24 +848,24 @@ async def admin_approve_campaign(
     if campaign.status != "pending_review":
         raise HTTPException(status_code=400, detail="Campaign is not pending review")
     campaign.status = "active"
-    campaign.approved_at = func.now()
-    campaign.approved_by = user.id
+    campaign.reviewed_at = func.now()
+    campaign.reviewed_by = user.id
     await db.commit()
-    org_name = campaign.organization.name if campaign.organization else "Unknown"
     ip, ua = get_client_info(None)
     await log_action(db, user.id, "campaign.approve", "ad_campaign", id,
                      details={"campaign_name": campaign.name}, ip_address=ip, user_agent=ua)
-    await create_notification(
-        db, str(campaign.organization.owner_id), "campaign.approved",
-        "Campaign Approved",
-        f"Your campaign '{campaign.name}' has been approved and is now active.",
-    )
+    if campaign.organization:
+        await create_notification(
+            db, str(campaign.organization.owner_id), "campaign.approved",
+            "Campaign Approved",
+            f"Your campaign '{campaign.name}' has been approved and is now active.",
+        )
     return {"message": "Campaign approved"}
 
 
 @router.post("/campaigns/{id}/reject")
 async def admin_reject_campaign(
-    id: int,
+    id: UUID,
     body: ReasonRequest,
     db: AsyncSession = Depends(get_db),
     user: User = Depends(require_role("moderator")),
@@ -870,14 +878,17 @@ async def admin_reject_campaign(
     if campaign.status != "pending_review":
         raise HTTPException(status_code=400, detail="Campaign is not pending review")
     campaign.status = "rejected"
+    campaign.reviewed_at = func.now()
+    campaign.reviewed_by = user.id
+    campaign.rejection_reason = body.reason
     await db.commit()
-    org_name = campaign.organization.name if campaign.organization else "Unknown"
     ip, ua = get_client_info(None)
     await log_action(db, user.id, "campaign.reject", "ad_campaign", id,
                      details={"campaign_name": campaign.name, "reason": body.reason}, ip_address=ip, user_agent=ua)
-    await create_notification(
-        db, str(campaign.organization.owner_id), "campaign.rejected",
-        "Campaign Rejected",
-        f"Your campaign '{campaign.name}' has been rejected.{' Reason: ' + body.reason if body.reason else ''}",
-    )
+    if campaign.organization:
+        await create_notification(
+            db, str(campaign.organization.owner_id), "campaign.rejected",
+            "Campaign Rejected",
+            f"Your campaign '{campaign.name}' has been rejected.{' Reason: ' + body.reason if body.reason else ''}",
+        )
     return {"message": "Campaign rejected"}

@@ -1,3 +1,4 @@
+from app.schemas.common import MessageResponse
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -6,7 +7,7 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.notification import Notification, NotificationPreference
 from app.models.user import User
-from app.schemas.common import PaginatedResponse
+from app.schemas.common import PaginatedResponse, MessageResponse
 from app.schemas.notification import NotificationPreferenceResponse, NotificationPreferenceUpdate
 
 router = APIRouter()
@@ -20,7 +21,8 @@ async def list_notifications(
     db: AsyncSession = Depends(get_db),
 ):
     query = select(Notification).where(
-        Notification.user_id == user.id
+        Notification.user_id == user.id,
+        Notification.deleted_at.is_(None),
     ).order_by(Notification.created_at.desc())
 
     total = (await db.execute(select(func.count()).select_from(query.subquery()))).scalar() or 0
@@ -60,10 +62,29 @@ async def mark_all_read(
 ):
     await db.execute(
         update(Notification)
-        .where(Notification.user_id == user.id, not Notification.is_read)
+        .where(Notification.user_id == user.id, Notification.is_read == False)
         .values(is_read=True)
     )
     return {"message": "All notifications marked as read"}
+
+
+@router.delete("/{id}", response_model=MessageResponse)
+async def delete_notification(
+    id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Notification).where(Notification.id == id, Notification.user_id == user.id)
+    )
+    notif = result.scalar_one_or_none()
+    if not notif:
+        raise HTTPException(status_code=404, detail="Notification not found")
+
+    import uuid
+    from datetime import datetime, timezone
+    notif.deleted_at = datetime.now(timezone.utc)
+    return {"message": "Notification deleted"}
 
 
 @router.get("/preferences", response_model=NotificationPreferenceResponse)

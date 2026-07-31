@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { MapPin, Phone, Globe, Clock, ChevronLeft, Star, Share2, Flag, Heart, MessageCircle, Navigation, Info } from 'lucide-react'
+import { MapPin, Phone, Globe, Clock, ChevronLeft, Star, Share2, Flag, Heart, MessageCircle, Navigation, Info, Edit2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import api from '@/lib/api-client'
 import { Card, Badge, StarRating, Button, Input } from '@/components/ui'
@@ -14,6 +14,7 @@ import { ReportButton } from '@/features/reports/ReportButton'
 import { useAnalytics } from '@/hooks/useAnalytics'
 
 import OrganizationPostsTab from '@/features/organizations/OrganizationPostsTab'
+import OrganizationEditSheet from '@/features/organizations/OrganizationEditSheet'
 import MediaGallery from '@/components/ui/MediaGallery'
 
 export default function BusinessDetailPage() {
@@ -22,6 +23,8 @@ export default function BusinessDetailPage() {
   const [activeTab, setActiveTab] = useState('About')
   const [isReviewSheetOpen, setIsReviewSheetOpen] = useState(false)
   const { trackClick, trackDirections } = useAnalytics()
+
+  const [isEditing, setIsEditing] = useState(false)
 
   const { data: user } = useQuery({
     queryKey: ['user'],
@@ -43,6 +46,7 @@ export default function BusinessDetailPage() {
   if (!business) return <div className="text-center py-20 text-surface-500 font-medium">Business not found</div>
 
   const isOwnerOrAdmin = user && (user.id === business.owner_id || ['super_admin', 'admin', 'moderator'].includes(user.role?.name))
+  const isOwner = user && user.id === business.owner_id
 
   return (
     <div className="min-h-screen bg-surface-50 pb-20 md:pb-0">
@@ -65,6 +69,15 @@ export default function BusinessDetailPage() {
           </button>
           
           <div className="flex gap-2">
+            {isOwner && (
+              <button
+                onClick={() => setIsEditing(true)}
+                className="p-2.5 rounded-full bg-white/20 backdrop-blur-md text-white hover:bg-white/30 transition-colors"
+                title="Edit organization"
+              >
+                <Edit2 className="w-5 h-5" />
+              </button>
+            )}
             <FavoriteButton organizationId={business.id} />
             <ReportButton resourceType="business" resourceId={business.id} />
           </div>
@@ -203,6 +216,13 @@ export default function BusinessDetailPage() {
         isOpen={isReviewSheetOpen} 
         onClose={() => setIsReviewSheetOpen(false)} 
         organizationId={business.id} 
+      />
+
+      <OrganizationEditSheet
+        isOpen={isEditing}
+        onClose={() => setIsEditing(false)}
+        organization={business}
+        queryKey={['business', slug]}
       />
     </div>
   )

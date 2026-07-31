@@ -411,7 +411,7 @@ async def claim_business(
 
     existing = await db.execute(
         select(OwnershipClaim).where(
-            OwnershipClaim.business_id == id,
+            OwnershipClaim.organization_id == id,
             OwnershipClaim.claimant_id == user.id,
             OwnershipClaim.status == "pending",
         )
@@ -419,7 +419,7 @@ async def claim_business(
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Claim already submitted")
 
-    claim = OwnershipClaim(business_id=id, claimant_id=user.id)
+    claim = OwnershipClaim(organization_id=id, organization_type="business", claimant_id=user.id)
     db.add(claim)
     await log_action(db, user.id, "business.claim", "business", id)
     return {"message": "Ownership claim submitted for review"}
@@ -454,7 +454,7 @@ async def upload_verification_document(
 
     existing = await db.execute(
         select(VerificationDocument).where(
-            VerificationDocument.business_id == id,
+            VerificationDocument.organization_id == id,
             VerificationDocument.status == "pending",
         )
     )
@@ -475,7 +475,7 @@ async def upload_verification_document(
         document_type=document_type,
         file_url=file_url,
         status="pending",
-        business_id=id,
+        organization_id=uuid.UUID(id) if isinstance(id, str) else id,
         user_id=user.id,
     )
     db.add(doc)
@@ -505,7 +505,7 @@ async def get_verification_status(
 
     doc_result = await db.execute(
         select(VerificationDocument).where(
-            VerificationDocument.business_id == id,
+            VerificationDocument.organization_id == id,
         ).order_by(VerificationDocument.created_at.desc()).limit(5)
     )
     docs = doc_result.scalars().all()
@@ -551,7 +551,7 @@ async def purchase_premier(
 
     existing_pending = await db.execute(
         select(PremierSubscription).where(
-            PremierSubscription.business_id == id,
+            PremierSubscription.organization_id == id,
             PremierSubscription.status == "pending",
         )
     )
@@ -585,7 +585,7 @@ async def purchase_premier(
         amount=req.amount,
         currency=req.currency,
         status="pending",
-        business_id=id,
+        organization_id=uuid.UUID(id) if isinstance(id, str) else id,
         user_id=user.id,
         payment_id=payment.id,
     )
@@ -619,7 +619,7 @@ async def confirm_premier(
 
     sub_result = await db.execute(
         select(PremierSubscription).where(
-            PremierSubscription.business_id == id,
+            PremierSubscription.organization_id == id,
             PremierSubscription.status == "pending",
         ).order_by(PremierSubscription.created_at.desc())
     )
@@ -663,10 +663,10 @@ async def deactivate_business(
     if str(business.owner_id) != str(user.id):
         raise HTTPException(status_code=403, detail="Not your business")
 
-    if not business.is_active:
+    if business.status == "suspended":
         raise HTTPException(status_code=400, detail="Business is already deactivated")
 
-    business.is_active = False
+    business.status = "suspended"
     await log_action(db, user.id, "business.deactivate", "business", id)
 
     return {"message": "Business successfully deactivated"}

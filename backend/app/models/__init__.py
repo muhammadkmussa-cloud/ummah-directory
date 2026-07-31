@@ -15,9 +15,10 @@ from app.models.cms import BlogPost, CMSBanner, CMSPage
 from app.models.donation import Donation
 from app.models.education import EducationalInstitution
 from app.models.event import Event
-from app.models.favorite import Favorite
+from app.models.favorite import Favorite, FavoriteCollection
 from app.models.mfa import MFAConfig
 from app.models.media import MediaFile
+
 from app.models.mosque import Mosque
 from app.models.notification import Notification, NotificationPreference
 from app.models.prayer_subscription import MosquePrayerSubscription
@@ -25,6 +26,7 @@ from app.models.payment import Payment
 from app.models.premier import PremierSubscription
 from app.models.report import Report
 from app.models.review import Review, ReviewReply
+from app.models.saved_payment_method import SavedPaymentMethod
 from app.models.user import Role, User
 from app.models.verification import VerificationDocument
 from app.models.post import OrganizationPost, PostLike

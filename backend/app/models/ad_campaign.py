@@ -8,7 +8,13 @@ from sqlalchemy import DateTime, Float, ForeignKey, Index, Integer, Numeric, Str
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from typing import TYPE_CHECKING
+
 from app.models.base import BaseModelMixin
+
+if TYPE_CHECKING:
+    from app.models.organization import Organization
+    from app.models.user import User
 
 
 class AdCampaign(BaseModelMixin):

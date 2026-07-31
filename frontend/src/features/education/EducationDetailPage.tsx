@@ -1,15 +1,18 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { MapPin, Phone, Globe, Mail, ArrowLeft, BookOpen, GraduationCap } from 'lucide-react'
+import { useState } from 'react'
+import { MapPin, Phone, Globe, Mail, ArrowLeft, BookOpen, GraduationCap, Edit2 } from 'lucide-react'
 import api from '@/lib/api-client'
 import { Card, Badge } from '@/components/ui'
 import { ReportButton } from '@/features/reports/ReportButton'
 import OrganizationPostsTab from '@/features/organizations/OrganizationPostsTab'
+import OrganizationEditSheet from '@/features/organizations/OrganizationEditSheet'
 import MediaGallery from '@/components/ui/MediaGallery'
 
 export default function EducationDetailPage() {
   const { slug } = useParams()
   const navigate = useNavigate()
+  const [isEditing, setIsEditing] = useState(false)
 
   const { data: user } = useQuery({
     queryKey: ['user'],
@@ -26,6 +29,7 @@ export default function EducationDetailPage() {
   if (!institution) return <div className="text-center py-12">Institution not found</div>
 
   const isOwnerOrAdmin = user && (user.id === institution.owner_id || ['super_admin', 'admin', 'moderator'].includes(user.role?.name))
+  const isOwner = user && user.id === institution.owner_id
 
   const features = [
     { label: "Girls' Section", active: institution.has_girls_section },
@@ -39,7 +43,18 @@ export default function EducationDetailPage() {
         <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-gray-600 hover:text-gray-900">
           <ArrowLeft className="w-4 h-4" /> Back
         </button>
-        <ReportButton resourceType="education" resourceId={institution.id} />
+        <div className="flex items-center gap-2">
+          {isOwner && (
+            <button
+              onClick={() => setIsEditing(true)}
+              className="p-2.5 rounded-full bg-indigo-50 text-indigo-600 hover:bg-indigo-100 transition-colors"
+              title="Edit organization"
+            >
+              <Edit2 className="w-5 h-5" />
+            </button>
+          )}
+          <ReportButton resourceType="education" resourceId={institution.id} />
+        </div>
       </div>
 
       <div className="h-56 bg-indigo-50 rounded-2xl mb-6 flex items-center justify-center">
@@ -97,6 +112,13 @@ export default function EducationDetailPage() {
             />
           </div>
         </div>
+
+        <OrganizationEditSheet
+          isOpen={isEditing}
+          onClose={() => setIsEditing(false)}
+          organization={institution}
+          queryKey={['education', slug]}
+        />
 
         <div className="space-y-6">
           <Card>

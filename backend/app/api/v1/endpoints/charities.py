@@ -133,7 +133,8 @@ async def update_charity(
     charity = result.scalar_one_or_none()
     if not charity:
         raise HTTPException(status_code=404, detail="Charity not found")
-    if str(charity.primary_admin_id) != str(user.id):
+    is_owner = str(charity.owner_id) == str(user.id)
+    if not is_owner:
         raise HTTPException(status_code=403, detail="Not your charity")
 
     for field, value in req.model_dump(exclude_unset=True).items():
@@ -163,7 +164,7 @@ async def delete_charity(
     charity = result.scalar_one_or_none()
     if not charity:
         raise HTTPException(status_code=404, detail="Charity not found")
-    is_owner = str(charity.primary_admin_id) == str(user.id)
+    is_owner = str(charity.owner_id) == str(user.id)
     is_admin = user.role.name in ("super_admin", "moderator")
     if not is_owner and not is_admin:
         raise HTTPException(status_code=403, detail="Not authorized")
@@ -206,7 +207,7 @@ async def create_campaign(
     charity = result.scalar_one_or_none()
     if not charity:
         raise HTTPException(status_code=404, detail="Charity not found")
-    if str(charity.primary_admin_id) != str(user.id):
+    if str(charity.owner_id) != str(user.id):
         raise HTTPException(status_code=403, detail="Not your charity")
 
     campaign = CharityCampaign(
@@ -250,7 +251,7 @@ async def update_campaign(
         raise HTTPException(status_code=404, detail="Campaign not found")
     charity_result = await db.execute(select(Charity).where(Charity.id == charity_id))
     charity = charity_result.scalar_one_or_none()
-    if not charity or str(charity.primary_admin_id) != str(user.id):
+    if not charity or str(charity.owner_id) != str(user.id):
         raise HTTPException(status_code=403, detail="Not authorized")
 
     update_data = req.model_dump(exclude_unset=True)
@@ -286,7 +287,7 @@ async def delete_campaign(
         raise HTTPException(status_code=404, detail="Campaign not found")
     charity_result = await db.execute(select(Charity).where(Charity.id == charity_id))
     charity = charity_result.scalar_one_or_none()
-    if not charity or str(charity.primary_admin_id) != str(user.id):
+    if not charity or str(charity.owner_id) != str(user.id):
         raise HTTPException(status_code=403, detail="Not authorized")
     campaign.soft_delete()
     await log_action(db, user.id, "campaign.delete", "campaign", campaign_id)
@@ -341,5 +342,5 @@ async def _get_campaign(db, charity_id, campaign_id):
 async def _check_charity_admin(db, charity_id, user):
     result = await db.execute(select(Charity).where(Charity.id == charity_id))
     charity = result.scalar_one_or_none()
-    if not charity or str(charity.primary_admin_id) != str(user.id):
+    if not charity or str(charity.owner_id) != str(user.id):
         raise HTTPException(status_code=403, detail="Not authorized")

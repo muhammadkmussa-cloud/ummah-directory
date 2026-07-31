@@ -1,8 +1,8 @@
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, Query
 from itsdangerous import URLSafeTimedSerializer
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -156,6 +156,33 @@ async def user_dashboard(
     claim_count = await db.execute(
         select(func.count(OwnershipClaim.id)).where(OwnershipClaim.claimant_id == user.id)
     )
+    pending_org_count = await db.execute(
+        select(func.count(Organization.id)).where(
+            Organization.owner_id == user.id, Organization.status == "pending"
+        )
+    )
+    claim_pending_count = await db.execute(
+        select(func.count(OwnershipClaim.id)).where(
+            OwnershipClaim.claimant_id == user.id, OwnershipClaim.status == "pending"
+        )
+    )
+
+    from app.models.ad_campaign import AdCampaign
+    from sqlalchemy import or_
+    org_ids_subq = select(Organization.id).where(Organization.owner_id == user.id)
+    active_campaign_count = await db.execute(
+        select(func.count(AdCampaign.id)).where(
+            AdCampaign.organization_id.in_(org_ids_subq),
+            AdCampaign.status == "active",
+            AdCampaign.deleted_at.is_(None),
+        )
+    )
+    total_campaign_count = await db.execute(
+        select(func.count(AdCampaign.id)).where(
+            AdCampaign.organization_id.in_(org_ids_subq),
+            AdCampaign.deleted_at.is_(None),
+        )
+    )
 
     recent_notifs = await db.execute(
         select(Notification).where(Notification.user_id == user.id)
@@ -193,6 +220,10 @@ async def user_dashboard(
             "organizations": organization_count.scalar() or 0,
             "unread_notifications": unread_notif.scalar() or 0,
             "ownership_claims": claim_count.scalar() or 0,
+            "pending_organizations": pending_org_count.scalar() or 0,
+            "pending_claims": claim_pending_count.scalar() or 0,
+            "active_campaigns": active_campaign_count.scalar() or 0,
+            "total_campaigns": total_campaign_count.scalar() or 0,
         },
         "organizations": [
             {
@@ -233,6 +264,112 @@ async def deactivate_account(
     await log_action(db, user.id, "user.deactivate", "user", str(user.id))
     return {"message": "Account deactivated successfully"}
 
+
+@router.get("/me/sessions")
+async def get_active_sessions(
+    user: User = Depends(get_current_user),
+):
+    try:
+        from app.core.cache import get_redis
+        import json
+        redis = await get_redis()
+        sessions_key = f"active_sessions:{user.id}"
+        raw = await redis.lrange(sessions_key, 0, -1)
+        sessions = []
+        for s in raw:
+            try:
+                data = json.loads(s)
+            except (json.JSONDecodeError, TypeError):
+                continue
+            is_current = False
+            sessions.append({
+                "jti": data.get("jti"),
+                "ip_address": data.get("ip"),
+                "user_agent": data.get("user_agent"),
+                "logged_in_at": data.get("logged_in_at"),
+                "is_current": is_current,
+            })
+        return {"sessions": sessions}
+    except Exception:
+        return {"sessions": []}
+
+
+@router.post("/me/sessions/logout-all", response_model=MessageResponse)
+async def logout_all_sessions(
+    user: User = Depends(get_current_user),
+    request: Request = None,  # type: ignore[assignment]
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        from app.core.cache import get_redis
+        import json
+        redis = await get_redis()
+        sessions_key = f"active_sessions:{user.id}"
+        raw = await redis.lrange(sessions_key, 0, -1)
+        current_jti = None
+        auth = request.headers.get("Authorization", "") if request else ""
+        if auth.startswith("Bearer "):
+            from app.core.security import decode_token
+            payload = decode_token(auth[7:])
+            if payload:
+                current_jti = payload.get("jti")
+
+        for s in raw:
+            try:
+                data = json.loads(s)
+                jti = data.get("jti")
+                if jti and jti != current_jti:
+                    from app.services.token_service import blacklist_token
+                    from datetime import timedelta
+                    await blacklist_token(jti, timedelta(hours=24))
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+        await redis.delete(sessions_key)
+        if current_jti:
+            session_data = {
+                "jti": current_jti,
+                "ip": "current",
+                "user_agent": "current",
+                "logged_in_at": datetime.now(UTC).isoformat(),
+            }
+            await redis.lpush(sessions_key, json.dumps(session_data))
+
+        await log_action(db, user.id, "user.logout_all_sessions", "user", str(user.id))
+        return {"message": "All other sessions logged out"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Failed to log out sessions")
+
+
+@router.get("/me/login-history")
+async def get_login_history(
+    page: int = Query(1, ge=1),
+    size: int = Query(20, ge=1, le=100),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from app.models.audit import AuditLog
+
+    base_q = select(AuditLog).where(
+        AuditLog.user_id == user.id,
+        AuditLog.action == "user.login",
+    ).order_by(AuditLog.created_at.desc())
+
+    total = (await db.execute(select(func.count()).select_from(base_q.subquery()))).scalar() or 0
+    result = await db.execute(base_q.offset((page - 1) * size).limit(size))
+
+    return {
+        "items": [{
+            "id": str(log.id),
+            "ip_address": log.ip_address,
+            "user_agent": log.user_agent,
+            "created_at": log.created_at,
+        } for log in result.scalars().all()],
+        "total": total,
+        "page": page,
+        "size": size,
+        "pages": (total + size - 1) // size if total > 0 else 0,
+    }
 
 @router.get("/me/saved-events")
 async def get_saved_events(

@@ -7,7 +7,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, require_permission
-from app.models.favorite import Favorite
+from app.models.favorite import Favorite, FavoriteCollection
 from app.models.organization import Organization
 from app.models.post import OrganizationPost
 from app.models.user import User
@@ -128,7 +128,7 @@ async def feed_favorites(
 ):
     favorited_org_ids = select(Favorite.organization_id).where(
         Favorite.user_id == user.id
-    ).subquery()
+    ).scalar_subquery()
 
     base_q = select(OrganizationPost).options(
         selectinload(OrganizationPost.organization),
@@ -169,3 +169,87 @@ async def feed_favorites(
         size=size,
         pages=(total + size - 1) // size if total > 0 else 0,
     )
+
+
+# --- Collections ---
+
+@router.get("/collections")
+async def list_collections(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(FavoriteCollection).where(FavoriteCollection.user_id == user.id)
+        .options(selectinload(FavoriteCollection.favorites))
+        .order_by(FavoriteCollection.name.asc())
+    )
+    return [{
+        "id": str(c.id),
+        "name": c.name,
+        "count": len(c.favorites),
+        "created_at": c.created_at,
+    } for c in result.scalars().all()]
+
+
+@router.post("/collections")
+async def create_collection(
+    name: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    name = name.strip()[:100]
+    if not name:
+        raise HTTPException(status_code=400, detail="Collection name is required")
+    coll = FavoriteCollection(name=name, user_id=user.id)
+    db.add(coll)
+    await db.flush()
+    return {"id": str(coll.id), "name": coll.name, "count": 0, "created_at": coll.created_at}
+
+
+@router.delete("/collections/{id}", response_model=MessageResponse)
+async def delete_collection(
+    id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(FavoriteCollection).where(
+            FavoriteCollection.id == id, FavoriteCollection.user_id == user.id
+        )
+    )
+    coll = result.scalar_one_or_none()
+    if not coll:
+        raise HTTPException(status_code=404, detail="Collection not found")
+    await db.delete(coll)
+    return {"message": "Collection deleted"}
+
+
+@router.post("/{id}/move", response_model=MessageResponse)
+async def move_favorite(
+    id: str,
+    collection_id: str | None = None,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    # Find the favorite
+    result = await db.execute(
+        select(Favorite).where(Favorite.id == id, Favorite.user_id == user.id)
+    )
+    fav = result.scalar_one_or_none()
+    if not fav:
+        raise HTTPException(status_code=404, detail="Favorite not found")
+
+    if collection_id is not None and collection_id != "":
+        # Verify collection belongs to user
+        coll_result = await db.execute(
+            select(FavoriteCollection).where(
+                FavoriteCollection.id == collection_id, FavoriteCollection.user_id == user.id
+            )
+        )
+        if not coll_result.scalar_one_or_none():
+            raise HTTPException(status_code=404, detail="Collection not found")
+        fav.collection_id = uuid.UUID(collection_id) if isinstance(collection_id, str) else collection_id
+    else:
+        fav.collection_id = None  # Remove from collection
+
+    return {"message": "Favorite moved"}

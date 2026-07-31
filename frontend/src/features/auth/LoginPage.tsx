@@ -39,45 +39,43 @@ export default function LoginPage() {
     }
   };
 
-  const fillDemo = (email: string, pass: string) => {
-    setValue('email', email, { shouldValidate: true });
-    setValue('password', pass, { shouldValidate: true });
-  };
-
   return (
     <AuthLayout>
       <div className="w-full">
         <h1 className="text-2xl text-center font-bold mb-2">{t('auth.login', 'Sign In')}</h1>
-        <p className="text-sm text-center text-slate-500 mb-6">{t('auth.login.subtitle', 'Select a demo account or sign in with your credentials')}</p>
+        <p className="text-sm text-center text-slate-500 mb-6">{t('auth.login.subtitle', 'Sign in with your credentials')}</p>
 
         {import.meta.env.MODE !== 'production' && (
-          <div className="mb-6 p-3 bg-emerald-50/70 border border-emerald-200/60 rounded-xl">
-            <div className="text-xs font-semibold text-emerald-800 uppercase tracking-wider mb-2 text-center">
-              {t('auth.login.demo', 'Quick Demo Login')}
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => fillDemo('admin@ummahdirectory.test', 'Admin@123456')}
-                className="px-2 py-1.5 bg-white hover:bg-emerald-100/60 text-emerald-700 text-xs font-semibold rounded-lg border border-emerald-200 shadow-sm transition-colors text-center"
-              >
-                {t('auth.login.demo.admin', 'Admin')}
-              </button>
-              <button
-                type="button"
-                onClick={() => fillDemo('moderator1@ummahdirectory.test', 'Moderator@123')}
-                className="px-2 py-1.5 bg-white hover:bg-emerald-100/60 text-emerald-700 text-xs font-semibold rounded-lg border border-emerald-200 shadow-sm transition-colors text-center"
-              >
-                {t('auth.login.demo.moderator', 'Moderator')}
-              </button>
-              <button
-                type="button"
-                onClick={() => fillDemo('user1@ummahdirectory.test', 'User@123')}
-                className="px-2 py-1.5 bg-white hover:bg-emerald-100/60 text-emerald-700 text-xs font-semibold rounded-lg border border-emerald-200 shadow-sm transition-colors text-center"
-              >
-                {t('auth.login.demo.user', 'User')}
-              </button>
-            </div>
+          <div className="mb-6">
+            <select
+              className="w-full text-sm border-emerald-200 rounded-xl bg-emerald-50/50 text-emerald-800 focus:ring-emerald-500 p-2.5 outline-none focus:border-emerald-500"
+              onChange={(e) => {
+                if (!e.target.value) return;
+                const [email, pass] = e.target.value.split('|');
+                setValue('email', email, { shouldValidate: true });
+                setValue('password', pass, { shouldValidate: true });
+              }}
+              defaultValue=""
+            >
+              <option value="" disabled>🧪 Select a Test Account (Dev Only)</option>
+              <optgroup label="Administrators">
+                <option value="admin@ummadirectory.test|Admin@123456">Super Admin (admin)</option>
+              </optgroup>
+              <optgroup label="Moderators">
+                {[1,2,3,4,5].map(i => (
+                  <option key={`mod${i}`} value={`moderator${i}@ummadirectory.test|Moderator@123`}>
+                    Moderator {i}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Registered Users">
+                {[1,2,3,4,5,6,7,8,9,10].map(i => (
+                  <option key={`user${i}`} value={`user${i}@ummadirectory.test|User@123`}>
+                    User {i}
+                  </option>
+                ))}
+              </optgroup>
+            </select>
           </div>
         )}
 

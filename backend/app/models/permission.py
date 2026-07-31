@@ -5,7 +5,12 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+from typing import TYPE_CHECKING
+
 from app.models.base import BaseModelMixin
+
+if TYPE_CHECKING:
+    from app.models.user import Role
 
 role_permissions = Table(
     "role_permissions",

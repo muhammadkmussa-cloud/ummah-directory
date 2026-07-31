@@ -1,31 +1,82 @@
+import os
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy import create_engine, text
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.types import JSON
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from sqlalchemy.pool import NullPool
+
+# Register SQLite JSONB compilation hook for SQLite compatibility
+@compiles(JSONB, "sqlite")
+def compile_jsonb_sqlite(type_, compiler, **kw):
+    return compiler.visit_JSON(JSON(), **kw)
+
 
 from app.main import app
-from app.core.database import engine, Base
 from app.core.config import settings
+import app.core.database as db_module
 from app.models import *  # noqa: F401, F403
 
-sync_db_url = settings.database_url.replace("+asyncpg", "")
-sync_engine = create_engine(sync_db_url, pool_pre_ping=True)
+
+def is_postgres_reachable(url: str) -> bool:
+    if not url.startswith("postgresql"):
+        return False
+    try:
+        sync_url = url.replace("+asyncpg", "")
+        test_engine = create_engine(sync_url, connect_args={"connect_timeout": 2})
+        with test_engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        test_engine.dispose()
+        return True
+    except Exception:
+        return False
 
 
-from app.core.database import async_session_factory
+target_db_url = settings.database_url
+USE_SQLITE = not is_postgres_reachable(target_db_url)
+
+TEST_DB_FILE = os.path.abspath("./test_pytest.db")
+
+if USE_SQLITE:
+    sync_db_url = f"sqlite:///{TEST_DB_FILE}"
+    async_db_url = f"sqlite+aiosqlite:///{TEST_DB_FILE}"
+
+    settings.database_url = async_db_url
+
+    db_module.engine = create_async_engine(async_db_url, poolclass=NullPool)
+    db_module.async_session_factory = async_sessionmaker(
+        db_module.engine, class_=AsyncSession, expire_on_commit=False
+    )
+    sync_engine = create_engine(sync_db_url, poolclass=NullPool)
+else:
+    sync_db_url = settings.database_url.replace("+asyncpg", "")
+    sync_engine = create_engine(sync_db_url, pool_pre_ping=True)
+
 
 @pytest_asyncio.fixture(scope="session", autouse=True)
 async def setup_db():
     with sync_engine.begin() as conn:
-        Base.metadata.drop_all(conn, checkfirst=True)
-        Base.metadata.create_all(conn, checkfirst=False)
+        db_module.Base.metadata.drop_all(conn, checkfirst=True)
+        db_module.Base.metadata.create_all(conn, checkfirst=False)
     yield
     with sync_engine.begin() as conn:
-        Base.metadata.drop_all(conn, checkfirst=True)
+        db_module.Base.metadata.drop_all(conn, checkfirst=True)
+    if USE_SQLITE:
+        await db_module.engine.dispose()
+        sync_engine.dispose()
+        if os.path.exists(TEST_DB_FILE):
+            try:
+                os.remove(TEST_DB_FILE)
+            except OSError as e:
+                print(f"Error removing {TEST_DB_FILE}: {e}")
+
 
 
 @pytest_asyncio.fixture
 async def db_session():
-    async with async_session_factory() as session:
+    async with db_module.async_session_factory() as session:
         yield session
 
 

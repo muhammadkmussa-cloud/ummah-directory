@@ -70,7 +70,7 @@ class StripeGateway(PaymentGateway):
             if amount:
                 kwargs["amount"] = int(amount * 100)
             await retry_async(
-                lambda: asyncio.to_thread(stripe.Refund.create, **kwargs),
+                lambda: asyncio.to_thread(stripe.Refund.create, **kwargs),  # type: ignore[arg-type]
                 max_attempts=3,
                 base_delay=1.0,
                 exceptions=(stripe.error.StripeError,),

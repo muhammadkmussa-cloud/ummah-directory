@@ -71,3 +71,12 @@ class ResetPasswordRequest(BaseModel):
     @classmethod
     def validate_password(cls, v: str) -> str:
         return validate_password_strength(v)
+
+
+class PhoneVerificationRequest(BaseModel):
+    phone: str
+
+
+class PhoneVerificationConfirmRequest(BaseModel):
+    phone: str
+    code: str

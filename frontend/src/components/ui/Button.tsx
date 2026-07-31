@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 
 interface ButtonProps extends Omit<HTMLMotionProps<"button">, "ref" | "children"> {
   variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'destructive'
-  size?: 'sm' | 'md' | 'lg' | 'icon'
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'icon'
   loading?: boolean
   children?: React.ReactNode
 }
@@ -27,6 +27,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
             'text-surface-600 hover:bg-surface-100': variant === 'ghost',
             'bg-red-600 text-white hover:bg-red-700': variant === 'danger' || variant === 'destructive',
             'bg-red-500 text-white shadow-sm hover:bg-red-600': variant === 'danger',
+            'px-2.5 py-1 text-xs': size === 'xs',
             'px-4 py-2 text-sm': size === 'sm',
             'px-6 py-3 text-sm': size === 'md',
             'px-8 py-4 text-base': size === 'lg',

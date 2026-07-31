@@ -39,13 +39,13 @@ def validate_file_signature(content: bytes, mime_type: str) -> bool:
 
 
 def optimize_image(content: bytes, mime_type: str) -> bytes:
-    img = Image.open(io.BytesIO(content))
+    img: Image.Image = Image.open(io.BytesIO(content))
     if img.size[0] * img.size[1] > MAX_IMAGE_PIXELS:
         raise HTTPException(status_code=400, detail="Image resolution too high")
     if img.mode in ("RGBA", "P"):
         img = img.convert("RGB")
     if max(img.size) > MAX_IMAGE_DIMENSION:
-        img.thumbnail((MAX_IMAGE_DIMENSION, MAX_IMAGE_DIMENSION), Image.LANCZOS)
+        img.thumbnail((MAX_IMAGE_DIMENSION, MAX_IMAGE_DIMENSION), Image.Resampling.LANCZOS)
     output = io.BytesIO()
     save_kwargs: dict = {"format": img.format or "JPEG"}
     if img.format == "JPEG" or mime_type == "image/jpeg":
@@ -63,8 +63,8 @@ def generate_thumbnail(content: bytes, mime_type: str) -> bytes | None:
     if not mime_type.startswith("image/"):
         return None
     try:
-        img = Image.open(io.BytesIO(content))
-        img.thumbnail(THUMBNAIL_SIZE, Image.LANCZOS)
+        img: Image.Image = Image.open(io.BytesIO(content))
+        img.thumbnail(THUMBNAIL_SIZE, Image.Resampling.LANCZOS)
         if img.mode in ("RGBA", "P"):
             img = img.convert("RGB")
         output = io.BytesIO()

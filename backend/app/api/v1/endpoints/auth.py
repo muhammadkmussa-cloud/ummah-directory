@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
@@ -23,6 +23,8 @@ from app.schemas.auth import (
     EmailVerificationRequest,
     ForgotPasswordRequest,
     LoginRequest,
+    PhoneVerificationConfirmRequest,
+    PhoneVerificationRequest,
     RefreshRequest,
     RegisterRequest,
     ResetPasswordRequest,
@@ -181,7 +183,14 @@ async def login(req: LoginRequest, request: Request, db: AsyncSession = Depends(
     if payload and "jti" in payload and redis:
         try:
             sessions_key = f"active_sessions:{user.id}"
-            await redis.lpush(sessions_key, payload["jti"])
+            session_data = {
+                "jti": payload["jti"],
+                "ip": ip or "unknown",
+                "user_agent": ua or "unknown",
+                "logged_in_at": datetime.now(UTC).isoformat(),
+            }
+            import json
+            await redis.lpush(sessions_key, json.dumps(session_data))
             await redis.ltrim(sessions_key, 0, 4)
         except Exception:
             pass
@@ -248,7 +257,8 @@ async def refresh_token(req: RefreshRequest, request: Request, db: AsyncSession 
         raise HTTPException(status_code=401, detail="User not found")
 
     exp = payload.get("exp")
-    if exp:
+    jti = payload.get("jti")
+    if exp and isinstance(jti, str):
         from datetime import UTC, datetime
         remaining = datetime.fromtimestamp(exp, tz=UTC) - datetime.now(UTC)
         if remaining > timedelta(0):
@@ -317,7 +327,17 @@ async def logout(
                         from app.core.cache import get_redis
                         r_cli = await get_redis()
                         sessions_key = f"active_sessions:{user_id}"
-                        await r_cli.lrem(sessions_key, 0, payload["jti"])
+                        import json
+                        sessions = await r_cli.lrange(sessions_key, 0, -1)
+                        for s in sessions:
+                            s_str = s.decode("utf-8") if isinstance(s, bytes) else str(s)
+                            try:
+                                data = json.loads(s_str)
+                                if data.get("jti") == payload.get("jti"):
+                                    await r_cli.lrem(sessions_key, 0, s_str)
+                                    break
+                            except (json.JSONDecodeError, TypeError):
+                                await r_cli.lrem(sessions_key, 0, s_str)
                     except Exception:
                         pass
 
@@ -363,3 +383,69 @@ async def reset_password(req: ResetPasswordRequest, request: Request, db: AsyncS
     ip, ua = get_client_info(request)
     await log_action(db, user.id, "user.password_reset", "user", str(user.id), ip_address=ip, user_agent=ua)
     return {"message": "Password reset successfully"}
+
+
+@router.post("/send-phone-verification", response_model=MessageResponse)
+@limiter.limit("3/minute")
+async def send_phone_verification(
+    req: PhoneVerificationRequest,
+    request: Request,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if user.is_phone_verified:
+        raise HTTPException(status_code=400, detail="Phone already verified")
+
+    if user.phone and user.phone != req.phone:
+        existing = await db.execute(select(User).where(User.phone == req.phone, User.id != user.id))
+        if existing.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="Phone number already in use")
+
+    import random
+    code = "".join(random.choices("0123456789", k=6))
+
+    from app.core.cache import get_redis
+    redis = await get_redis()
+    cache_key = f"phone_verify:{user.id}"
+    await redis.setex(cache_key, 300, f"{req.phone}:{code}")
+
+    message = f"Your Umma Directory verification code is: {code}"
+    from app.services.sms_service import send_sms
+    sent = await send_sms(req.phone, message)
+    if not sent:
+        raise HTTPException(status_code=500, detail="Failed to send verification code. Please try again.")
+
+    return {"message": "Verification code sent"}
+
+
+@router.post("/verify-phone", response_model=MessageResponse)
+@limiter.limit("5/minute")
+async def verify_phone(
+    req: PhoneVerificationConfirmRequest,
+    request: Request,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if user.is_phone_verified:
+        return {"message": "Phone already verified"}
+
+    from app.core.cache import get_redis
+    redis = await get_redis()
+    cache_key = f"phone_verify:{user.id}"
+    stored = await redis.get(cache_key)
+    if not stored:
+        raise HTTPException(status_code=400, detail="Verification code expired. Request a new one.")
+
+    stored_data = stored.decode() if isinstance(stored, bytes) else stored
+    stored_phone, stored_code = stored_data.split(":", 1)
+
+    if stored_phone != req.phone:
+        raise HTTPException(status_code=400, detail="Phone number mismatch")
+    if stored_code != req.code:
+        raise HTTPException(status_code=400, detail="Invalid verification code")
+
+    user.phone = req.phone
+    user.is_phone_verified = True
+    await redis.delete(cache_key)
+    await log_action(db, user.id, "user.phone_verified", "user", str(user.id))
+    return {"message": "Phone verified successfully"}

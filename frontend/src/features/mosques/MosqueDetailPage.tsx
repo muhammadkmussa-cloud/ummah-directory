@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { MapPin, Phone, Globe, Clock, ChevronLeft, Share2, Navigation, Info, Users, BookOpen, AlertCircle, Star } from 'lucide-react'
+import { MapPin, Phone, Globe, Clock, ChevronLeft, Share2, Navigation, Info, Users, BookOpen, AlertCircle, Star, Edit2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import api from '@/lib/api-client'
 import { Card, Badge, Button } from '@/components/ui'
@@ -13,6 +13,7 @@ import { PrayerSubscribeButton } from './PrayerSubscribeButton'
 import { ReviewSheet } from '@/features/reviews/ReviewSheet'
 import { StarRating } from '@/components/ui'
 import OrganizationPostsTab from '@/features/organizations/OrganizationPostsTab'
+import OrganizationEditSheet from '@/features/organizations/OrganizationEditSheet'
 import MediaGallery from '@/components/ui/MediaGallery'
 
 export default function MosqueDetailPage() {
@@ -20,6 +21,7 @@ export default function MosqueDetailPage() {
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('About')
   const [isReviewSheetOpen, setIsReviewSheetOpen] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
 
   const { data: user } = useQuery({
     queryKey: ['user'],
@@ -41,6 +43,7 @@ export default function MosqueDetailPage() {
   if (!mosque) return <div className="text-center py-20 text-surface-500 font-medium">Mosque not found</div>
 
   const isOwnerOrAdmin = user && (user.id === mosque.owner_id || ['super_admin', 'admin', 'moderator'].includes(user.role?.name))
+  const isOwner = user && user.id === mosque.owner_id
 
   const facilities = [
     { label: "Women's Section", active: mosque.has_women_facilities },
@@ -69,6 +72,15 @@ export default function MosqueDetailPage() {
             <ChevronLeft className="w-6 h-6" />
           </button>
           <div className="flex gap-2">
+            {isOwner && (
+              <button
+                onClick={() => setIsEditing(true)}
+                className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/30 transition"
+                title="Edit organization"
+              >
+                <Edit2 className="w-5 h-5" />
+              </button>
+            )}
             <FavoriteButton 
               organizationId={mosque.id} 
               className="w-10 h-10 bg-white/20 backdrop-blur-md text-white hover:bg-white/30" 
@@ -261,6 +273,13 @@ export default function MosqueDetailPage() {
         isOpen={isReviewSheetOpen} 
         onClose={() => setIsReviewSheetOpen(false)} 
         organizationId={mosque.id} 
+      />
+
+      <OrganizationEditSheet
+        isOpen={isEditing}
+        onClose={() => setIsEditing(false)}
+        organization={mosque}
+        queryKey={['mosque', slug]}
       />
     </div>
   )

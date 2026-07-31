@@ -1,3 +1,4 @@
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -126,7 +127,7 @@ async def create_event(
         cover_image_url=event.cover_image_url,
         category=event.category, status=event.status,
         registration_count=event.registration_count,
-        organizer_type=event.organizer_type,
+        organizer_type=event.organization.organization_type if event.organization else None,
         created_at=event.created_at,
     )
 
@@ -240,7 +241,7 @@ async def update_event(
         cover_image_url=event.cover_image_url,
         category=event.category, status=event.status,
         registration_count=event.registration_count,
-        organizer_type=event.organizer_type,
+        organizer_type=event.organization.organization_type if event.organization else None,
         created_at=event.created_at,
     )
 
@@ -263,3 +264,62 @@ async def delete_event(
     event.soft_delete()
     await log_action(db, user.id, "event.delete", "event", id)
     return {"message": "Event deleted"}
+
+
+@router.get("/{id}/calendar", response_model=None)
+async def download_calendar_ics(
+    id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    from fastapi.responses import PlainTextResponse
+    try:
+        event_uuid = uuid.UUID(id)
+        stmt = select(Event).where(Event.id == event_uuid)
+    except ValueError:
+        stmt = select(Event).where(Event.slug == id)
+
+    result = await db.execute(stmt)
+    event = result.scalar_one_or_none()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    # Build .ics content
+    from datetime import timezone
+
+    event_dt = event.event_date.replace(tzinfo=timezone.utc) if event.event_date and not event.event_date.tzinfo else event.event_date
+    uid_str = str(event.id)
+    now_stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    dt_start = event_dt.strftime("%Y%m%dT%H%M%SZ") if event_dt else ""
+
+    lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//Umma Directory//Events//EN",
+        "CALSCALE:GREGORIAN",
+        "METHOD:PUBLISH",
+        "BEGIN:VEVENT",
+        f"UID:{uid_str}@ummadirectory.com",
+        f"DTSTAMP:{now_stamp}",
+        f"DTSTART:{dt_start}",
+        f"SUMMARY:{event.title}",
+    ]
+
+    if event.description:
+        desc = event.description.replace("\n", "\\n").replace(",", "\\,")
+        lines.append(f"DESCRIPTION:{desc}")
+    if event.venue:
+        lines.append(f"LOCATION:{event.venue}")
+    if event.registration_link:
+        lines.append(f"URL:{event.registration_link}")
+
+    lines.extend([
+        "END:VEVENT",
+        "END:VCALENDAR",
+    ])
+
+    ics_content = "\r\n".join(lines) + "\r\n"
+    return PlainTextResponse(
+        content=ics_content,
+        media_type="text/calendar",
+        headers={"Content-Disposition": f'attachment; filename="{event.slug or event.id}.ics"'},
+    )

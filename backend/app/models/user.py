@@ -8,7 +8,21 @@ from sqlalchemy import Boolean, DateTime, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from typing import TYPE_CHECKING
+
 from app.models.base import BaseModelMixin
+
+if TYPE_CHECKING:
+    from app.models.audit import AuditLog
+    from app.models.donation import Donation
+    from app.models.event import SavedEvent
+    from app.models.favorite import Favorite, FavoriteCollection
+    from app.models.notification import Notification
+    from app.models.organization import Organization, OrganizationManager
+    from app.models.permission import Permission
+    from app.models.report import Report
+    from app.models.review import Review
+    from app.models.saved_payment_method import SavedPaymentMethod
 
 
 class Role(BaseModelMixin):
@@ -38,6 +52,7 @@ class User(BaseModelMixin):
     preferred_language: Mapped[str] = mapped_column(String(10), default="en")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_email_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_phone_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     prayer_time_settings: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     last_login: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     role_id: Mapped[uuid.UUID] = mapped_column(
@@ -52,6 +67,8 @@ class User(BaseModelMixin):
     
     reviews: Mapped[list["Review"]] = relationship("Review", back_populates="user", foreign_keys="Review.user_id")
     favorites: Mapped[list["Favorite"]] = relationship("Favorite", back_populates="user")
+    favorite_collections: Mapped[list["FavoriteCollection"]] = relationship("FavoriteCollection", back_populates="user", cascade="all, delete-orphan")
+    saved_payment_methods: Mapped[list["SavedPaymentMethod"]] = relationship("SavedPaymentMethod", back_populates="user", cascade="all, delete-orphan")
     donations: Mapped[list["Donation"]] = relationship("Donation", back_populates="donor")
     notifications: Mapped[list["Notification"]] = relationship("Notification", back_populates="user")
     audit_logs: Mapped[list["AuditLog"]] = relationship("AuditLog", back_populates="user")

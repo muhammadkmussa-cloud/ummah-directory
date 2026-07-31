@@ -10,6 +10,7 @@ from sqlalchemy.orm import selectinload, with_polymorphic
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, require_permission
 from app.core.rate_limit import limiter
+from app.models.business import OwnershipClaim
 from app.models.media import MediaFile
 from app.models.organization import Organization, OrganizationManager
 from app.models.user import User
@@ -301,3 +302,38 @@ async def remove_manager(
     await log_action(db, user.id, "organization.manager_removed", "organization", str(id))
 
     return {"message": "Manager removed successfully"}
+
+
+@router.post("/{id}/claim", response_model=MessageResponse)
+async def claim_organization(
+    id: uuid.UUID,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if not user.is_email_verified:
+        raise HTTPException(status_code=403, detail="Please verify your email first")
+
+    org = await db.get(Organization, id)
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    if str(org.owner_id) == str(user.id):
+        raise HTTPException(status_code=400, detail="You already own this organization")
+
+    existing = await db.execute(
+        select(OwnershipClaim).where(
+            OwnershipClaim.organization_id == id,
+            OwnershipClaim.claimant_id == user.id,
+            OwnershipClaim.status == "pending",
+        )
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Claim already submitted")
+
+    claim = OwnershipClaim(
+        organization_id=id,
+        organization_type=org.organization_type,
+        claimant_id=user.id,
+    )
+    db.add(claim)
+    await log_action(db, user.id, "organization.claim", "organization", str(id))
+    return {"message": "Ownership claim submitted for review"}

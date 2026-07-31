@@ -14,6 +14,7 @@ from app.models.organization import Organization
 from app.models.user import User
 from app.models.ad_analytics import AdAnalytics
 from app.schemas.ad_campaign import (
+    AdFeedItem,
     AdFeedResponse,
     AdSpotlightResponse,
     CampaignCreate,
@@ -35,33 +36,33 @@ async def _verify_org_owner(org_id: str, user: User, db: AsyncSession) -> Organi
     return org
 
 
-def _campaign_to_response(c: AdCampaign) -> dict:
-    return {
-        "id": str(c.id),
-        "name": c.name,
-        "campaign_type": c.campaign_type,
-        "status": c.status,
-        "organization_id": str(c.organization_id) if c.organization_id else None,
-        "organization_name": c.organization.name if c.organization else None,
-        "organization_slug": c.organization.slug if c.organization else None,
-        "headline": c.headline,
-        "description": c.description,
-        "cta_type": c.cta_type,
-        "media_url": c.media_url,
-        "destination_url": c.destination_url,
-        "budget_type": c.budget_type,
-        "budget_amount": c.budget_amount,
-        "spent": c.spent,
-        "start_date": c.start_date,
-        "end_date": c.end_date,
-        "target_country": c.target_country,
-        "target_city": c.target_city,
-        "target_categories": c.target_categories.get("categories") if c.target_categories else None,
-        "impressions": c.impressions,
-        "clicks": c.clicks,
-        "rejection_reason": c.rejection_reason,
-        "created_at": c.created_at,
-    }
+def _campaign_to_response(c: AdCampaign) -> CampaignResponse:
+    return CampaignResponse(
+        id=str(c.id),
+        name=c.name,
+        campaign_type=c.campaign_type,
+        status=c.status,
+        organization_id=str(c.organization_id) if c.organization_id else None,
+        organization_name=c.organization.name if c.organization else None,
+        organization_slug=c.organization.slug if c.organization else None,
+        headline=c.headline,
+        description=c.description,
+        cta_type=c.cta_type,
+        media_url=c.media_url,
+        destination_url=c.destination_url,
+        budget_type=c.budget_type,
+        budget_amount=c.budget_amount,
+        spent=c.spent,
+        start_date=c.start_date,
+        end_date=c.end_date,
+        target_country=c.target_country,
+        target_city=c.target_city,
+        target_categories=c.target_categories.get("categories") if c.target_categories else None,
+        impressions=c.impressions,
+        clicks=c.clicks,
+        rejection_reason=c.rejection_reason,
+        created_at=c.created_at,
+    )
 
 
 @router.get("/organizations/{org_id}/campaigns", response_model=CampaignListResponse)
@@ -396,17 +397,17 @@ async def get_feed_ads(
     )
     campaigns = result.scalars().all()
     return AdFeedResponse(items=[
-        {
-            "id": str(c.id),
-            "headline": c.headline or c.name,
-            "description": c.description,
-            "cta_type": c.cta_type,
-            "media_url": c.media_url,
-            "destination_url": c.destination_url,
-            "organization_id": str(c.organization_id) if c.organization_id else None,
-            "organization_name": c.organization.name if c.organization else None,
-            "organization_slug": c.organization.slug if c.organization else None,
-        }
+        AdFeedItem(
+            id=str(c.id),
+            headline=c.headline or c.name,
+            description=c.description,
+            cta_type=c.cta_type,
+            media_url=c.media_url,
+            destination_url=c.destination_url,
+            organization_id=str(c.organization_id) if c.organization_id else None,
+            organization_name=c.organization.name if c.organization else None,
+            organization_slug=c.organization.slug if c.organization else None,
+        )
         for c in campaigns
     ])
 
@@ -492,3 +493,91 @@ async def track_click(id: str, db: AsyncSession = Depends(get_db)):
     else:
         db.add(AdAnalytics(campaign_id=id, date=today, clicks=1))
     return {"message": "Tracked"}
+
+
+@router.post("/campaigns/{id}/pause", response_model=CampaignSubmitResponse)
+async def pause_campaign(
+    id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(AdCampaign).where(AdCampaign.id == id))
+    campaign = result.scalar_one_or_none()
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    org = await db.execute(select(Organization).where(Organization.id == campaign.organization_id))
+    org_record = org.scalar_one_or_none()
+    if not org_record or org_record.owner_id != user.id:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    if campaign.status != "active":
+        raise HTTPException(status_code=422, detail=f"Can only pause active campaigns, current status: {campaign.status}")
+
+    campaign.status = "paused"
+    return CampaignSubmitResponse(message="Campaign paused", campaign_id=str(campaign.id), status=campaign.status)
+
+
+@router.post("/campaigns/{id}/resume", response_model=CampaignSubmitResponse)
+async def resume_campaign(
+    id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(AdCampaign).where(AdCampaign.id == id))
+    campaign = result.scalar_one_or_none()
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    org = await db.execute(select(Organization).where(Organization.id == campaign.organization_id))
+    org_record = org.scalar_one_or_none()
+    if not org_record or org_record.owner_id != user.id:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    if campaign.status != "paused":
+        raise HTTPException(status_code=422, detail=f"Can only resume paused campaigns, current status: {campaign.status}")
+
+    if campaign.end_date and campaign.end_date < datetime.now(timezone.utc):
+        raise HTTPException(status_code=422, detail="Campaign end date has passed, please renew instead")
+
+    campaign.status = "active"
+    return CampaignSubmitResponse(message="Campaign resumed", campaign_id=str(campaign.id), status=campaign.status)
+
+
+@router.post("/campaigns/{id}/renew", response_model=dict)
+async def renew_campaign(
+    id: str,
+    days: int = 30,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(AdCampaign).where(AdCampaign.id == id))
+    campaign = result.scalar_one_or_none()
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    org = await db.execute(select(Organization).where(Organization.id == campaign.organization_id))
+    org_record = org.scalar_one_or_none()
+    if not org_record or org_record.owner_id != user.id:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    if campaign.status not in ("active", "completed", "paused"):
+        raise HTTPException(status_code=422, detail=f"Cannot renew campaign in status: {campaign.status}")
+
+    from datetime import timedelta
+    now = datetime.now(timezone.utc)
+    new_end = max(
+        campaign.end_date or now,
+        now
+    ) + timedelta(days=days)
+
+    campaign.end_date = new_end
+    if campaign.status in ("completed", "paused"):
+        campaign.status = "pending_review"
+
+    return {
+        "message": f"Campaign renewed for {days} days",
+        "campaign_id": str(campaign.id),
+        "status": campaign.status,
+        "end_date": new_end.isoformat(),
+    }

@@ -36,8 +36,10 @@ export default function DesktopSidebar() {
   const authLinks = isAuthenticated
     ? [
         { name: t('nav.notifications', 'Notifications'), path: '/notifications', icon: Bell },
+
         ...(isAdmin ? [{ name: 'Admin Console', path: '/admin', icon: ShieldAlert }] : []),
         { name: t('nav.dashboard', 'Dashboard'), path: '/dashboard', icon: User },
+        { name: t('nav.myOrganizations', 'My Orgs'), path: '/my-organizations', icon: Building2 },
       ]
     : [];
 
@@ -108,7 +110,7 @@ export default function DesktopSidebar() {
       {isAuthenticated && canAny('business.create', 'mosque.create', 'charity.create', 'education.create') && (
         <div className="mt-6 px-2">
           <Link
-            to="/businesses/new"
+            to="/organizations/new"
             className="flex items-center justify-center gap-2 w-full py-3 bg-primary-600 text-white rounded-2xl font-bold text-sm shadow-md hover:bg-primary-700 hover:shadow-lg transition-all active:scale-95"
           >
             <span>+ {t('action.addListing', 'Add Listing')}</span>

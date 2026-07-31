@@ -7,7 +7,17 @@ from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Te
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from typing import TYPE_CHECKING
+
 from app.models.base import BaseModelMixin
+
+if TYPE_CHECKING:
+    from app.models.business import OwnershipClaim
+    from app.models.media import MediaFile
+    from app.models.event import Event
+    from app.models.favorite import Favorite
+    from app.models.review import Review
+    from app.models.user import User
 
 
 class Organization(BaseModelMixin):
@@ -71,7 +81,7 @@ class OrganizationManager(BaseModelMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     __table_args__ = (
-        UniqueConstraint("organization_id", name="uq_organization_single_manager"),
+        UniqueConstraint("organization_id", "user_id", name="uq_organization_user_manager"),
     )
 
     organization: Mapped[Organization] = relationship("Organization", back_populates="managers")

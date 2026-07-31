@@ -1,8 +1,11 @@
+import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { Building2, MapPin, Phone, Globe, ChevronLeft, Calendar, Shield } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Building2, MapPin, Phone, Globe, ChevronLeft, Calendar, Shield, Flag, MessageSquare, Edit2 } from 'lucide-react';
 import { Card, Badge, Button } from '@/components/ui';
 import api from '@/lib/api-client';
+import { toast } from 'react-hot-toast';
+import OrganizationEditSheet from './OrganizationEditSheet';
 
 export default function OrganizationProfileView() {
   const { slug } = useParams<{ slug: string }>();
@@ -13,6 +16,22 @@ export default function OrganizationProfileView() {
     queryFn: () => api.get(`/organizations/${slug}`).then(r => r.data),
     enabled: !!slug,
   });
+
+  const { data: currentUser } = useQuery({
+    queryKey: ['user'],
+    queryFn: () => api.get('/users/me').then(r => r.data),
+    retry: false,
+  })
+
+  const [isEditing, setIsEditing] = useState(false)
+
+  const claimMutation = useMutation({
+    mutationFn: () => api.post(`/organizations/${org?.id}/claim`),
+    onSuccess: () => toast.success('Claim submitted for review'),
+    onError: (err: any) => toast.error(err.response?.data?.detail || 'Claim failed'),
+  })
+
+  const isOwner = currentUser && org && currentUser.id === org.owner_id
 
   if (isLoading) {
     return (
@@ -55,6 +74,15 @@ export default function OrganizationProfileView() {
           <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/30 transition">
             <ChevronLeft className="w-6 h-6" />
           </button>
+          {isOwner && (
+            <button
+              onClick={() => setIsEditing(true)}
+              className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/30 transition"
+              title="Edit organization"
+            >
+              <Edit2 className="w-5 h-5" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -113,12 +141,30 @@ export default function OrganizationProfileView() {
             </div>
 
             {/* View Full Profile */}
-            <Button variant="primary" className="w-full md:w-auto" onClick={() => navigate(detailRoute)}>
-              View Full Profile
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="primary" className="flex-1" onClick={() => navigate(detailRoute)}>
+                View Full Profile
+              </Button>
+              {currentUser && org.owner_id !== currentUser.id && (
+                <Button
+                  variant="outline"
+                  onClick={() => claimMutation.mutate()}
+                  loading={claimMutation.isPending}
+                >
+                  <Flag className="w-4 h-4 mr-2" /> Claim
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </div>
+
+      <OrganizationEditSheet
+        isOpen={isEditing}
+        onClose={() => setIsEditing(false)}
+        organization={org}
+        queryKey={['organization', slug]}
+      />
     </div>
   );
 }

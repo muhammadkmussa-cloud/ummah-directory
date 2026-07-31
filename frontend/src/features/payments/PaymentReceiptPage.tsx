@@ -106,6 +106,13 @@ export default function PaymentReceiptPage() {
             <Printer className="w-4 h-4" /> Print Receipt
           </Button>
           {payment.status === 'succeeded' && (
+            <a href={`/api/v1/payments/${id}/invoice`} download>
+              <Button variant="outline" className="flex items-center gap-2">
+                <Printer className="w-4 h-4" /> Download Invoice
+              </Button>
+            </a>
+          )}
+          {payment.status === 'succeeded' && (
             <Button
               variant="outline"
               className="flex items-center gap-2 text-red-600 border-red-200 hover:bg-red-50"

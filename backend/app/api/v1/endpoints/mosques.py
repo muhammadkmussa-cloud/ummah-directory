@@ -121,7 +121,7 @@ async def create_mosque(
         has_children_facilities=req.has_children_facilities,
         is_wheelchair_accessible=req.is_wheelchair_accessible,
         prayer_times=req.prayer_times, facilities=req.facilities,
-        primary_admin_id=user.id, status="pending",
+        owner_id=user.id, status="pending",
     )
     db.add(mosque)
     await db.flush()
@@ -157,7 +157,8 @@ async def update_mosque(
     mosque = result.scalar_one_or_none()
     if not mosque:
         raise HTTPException(status_code=404, detail="Mosque not found")
-    if str(mosque.primary_admin_id) != str(user.id):
+    is_owner = str(mosque.owner_id) == str(user.id)
+    if not is_owner:
         raise HTTPException(status_code=403, detail="Not your mosque")
 
     for field, value in req.model_dump(exclude_unset=True).items():
@@ -193,8 +194,8 @@ async def delete_mosque(
     mosque = result.scalar_one_or_none()
     if not mosque:
         raise HTTPException(status_code=404, detail="Mosque not found")
-    is_owner = str(mosque.primary_admin_id) == str(user.id)
-    is_admin = user.role.name in ("super_admin", "moderator")
+    is_owner = str(mosque.owner_id) == str(user.id)
+    is_admin = user.role and user.role.name in ("super_admin", "moderator")
     if not is_owner and not is_admin:
         raise HTTPException(status_code=403, detail="Not authorized")
     mosque.soft_delete()
@@ -228,7 +229,7 @@ async def add_mosque_admin(
     mosque = result.scalar_one_or_none()
     if not mosque:
         raise HTTPException(status_code=404, detail="Mosque not found")
-    if str(mosque.primary_admin_id) != str(user.id):
+    if str(mosque.owner_id) != str(user.id):
         raise HTTPException(status_code=403, detail="Only the primary admin can add admins")
 
     existing = await db.execute(
@@ -259,7 +260,7 @@ async def remove_mosque_admin(
     mosque = result.scalar_one_or_none()
     if not mosque:
         raise HTTPException(status_code=404, detail="Mosque not found")
-    if str(mosque.primary_admin_id) != str(user.id):
+    if str(mosque.owner_id) != str(user.id):
         raise HTTPException(status_code=403, detail="Only the primary admin can remove admins")
 
     result = await db.execute(
@@ -287,7 +288,7 @@ async def check_prayer_subscription(
     existing = await db.execute(
         select(MosquePrayerSubscription).where(
             MosquePrayerSubscription.user_id == user.id,
-            MosquePrayerSubscription.mosque_id == id,
+            MosquePrayerSubscription.organization_id == id,
         )
     )
     sub = existing.scalar_one_or_none()
@@ -308,7 +309,7 @@ async def toggle_prayer_subscription(
     existing = await db.execute(
         select(MosquePrayerSubscription).where(
             MosquePrayerSubscription.user_id == user.id,
-            MosquePrayerSubscription.mosque_id == id,
+            MosquePrayerSubscription.organization_id == id,
         )
     )
     sub = existing.scalar_one_or_none()
@@ -318,7 +319,7 @@ async def toggle_prayer_subscription(
         await log_action(db, user.id, f"prayer_subscription.{status_text}", "mosque", id)
         return {"message": f"You have {status_text} prayer time updates for this mosque"}
     else:
-        sub = MosquePrayerSubscription(user_id=user.id, mosque_id=id)
+        sub = MosquePrayerSubscription(user_id=user.id, organization_id=uuid.UUID(id) if isinstance(id, str) else id)
         db.add(sub)
         await log_action(db, user.id, "prayer_subscription.subscribed", "mosque", id)
         return {"message": "You have subscribed to prayer time updates for this mosque"}
@@ -334,12 +335,12 @@ async def list_prayer_subscribers(
     mosque = result.scalar_one_or_none()
     if not mosque:
         raise HTTPException(status_code=404, detail="Mosque not found")
-    if str(mosque.primary_admin_id) != str(user.id):
+    if str(mosque.owner_id) != str(user.id):
         raise HTTPException(status_code=403, detail="Only the primary admin can view subscribers")
 
     subs = await db.execute(
         select(MosquePrayerSubscription).where(
-            MosquePrayerSubscription.mosque_id == id,
+            MosquePrayerSubscription.organization_id == id,
             MosquePrayerSubscription.is_active,
         )
     )
@@ -358,7 +359,7 @@ async def update_prayer_times(
     if not mosque:
         raise HTTPException(status_code=404, detail="Mosque not found")
     
-    is_owner = str(mosque.primary_admin_id) == str(user.id)
+    is_owner = str(mosque.owner_id) == str(user.id)
     is_admin = user.role and user.role.name in ("super_admin", "moderator")
     if not is_owner and not is_admin:
         raise HTTPException(status_code=403, detail="Not authorized")

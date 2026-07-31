@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
-import { User, Bell, Settings, LogOut, ChevronRight, Lock, Globe, Shield, Heart, AlertTriangle, Camera, MapPin } from 'lucide-react'
+import { User, Bell, Settings, LogOut, ChevronRight, Lock, Globe, Shield, Heart, AlertTriangle, Camera, MapPin, Smartphone, CheckCircle, X } from 'lucide-react'
 import { motion } from 'framer-motion'
 import api from '@/lib/api-client'
-import { Button, Input, Card, Modal } from '@/components/ui'
+import { Button, Input, Card, Modal, Badge } from '@/components/ui'
 import ImageUploader from '@/components/ui/ImageUploader'
 import SecuritySettings from './SecuritySettings'
 import DonationHistory from '../donations/DonationHistory'
@@ -103,6 +103,27 @@ export default function ProfilePage() {
       toast.error(err.response?.data?.detail || 'Failed to deactivate account')
       setShowDeactivateModal(false)
     },
+  })
+
+  const [phoneVerifyMode, setPhoneVerifyMode] = useState(false)
+  const [verifyPhone, setVerifyPhone] = useState('')
+  const [verifyCode, setVerifyCode] = useState('')
+  const [codeSent, setCodeSent] = useState(false)
+
+  const sendPhoneCode = useMutation({
+    mutationFn: () => api.post('/auth/send-phone-verification', { phone: verifyPhone || user?.phone }),
+    onSuccess: () => { setCodeSent(true); toast.success('Verification code sent') },
+    onError: (err: any) => toast.error(err.response?.data?.detail || 'Failed to send code'),
+  })
+
+  const confirmPhoneCode = useMutation({
+    mutationFn: () => api.post('/auth/verify-phone', { phone: verifyPhone || user?.phone, code: verifyCode }),
+    onSuccess: () => {
+      setPhoneVerifyMode(false); setCodeSent(false); setVerifyCode('');
+      queryClient.invalidateQueries({ queryKey: ['user'] });
+      toast.success('Phone verified!')
+    },
+    onError: (err: any) => toast.error(err.response?.data?.detail || 'Invalid code'),
   })
 
   const onSubmit = (data: ProfileForm) => updateMutation.mutate(data)
@@ -244,7 +265,49 @@ export default function ProfilePage() {
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
                   <div className="grid md:grid-cols-2 gap-5">
                     <Input label="Full Name" {...register('full_name', { required: true })} className="bg-surface-50" />
-                    <Input label="Phone Number" type="tel" {...register('phone')} className="bg-surface-50" />
+                    <div>
+                      <Input label="Phone Number" type="tel" {...register('phone')} className="bg-surface-50" />
+                      {user?.phone && (
+                        <div className="mt-1.5">
+                          {user.is_phone_verified ? (
+                            <span className="text-xs text-emerald-600 flex items-center gap-1">
+                              <CheckCircle className="w-3.5 h-3.5" /> Verified
+                            </span>
+                          ) : phoneVerifyMode ? (
+                            <div className="flex items-center gap-2 mt-2">
+                              {!codeSent ? (
+                                <>
+                                  <input
+                                    type="text" value={verifyPhone} onChange={e => setVerifyPhone(e.target.value)}
+                                    placeholder={user.phone} className="input-field text-xs py-1.5 w-36"
+                                  />
+                                  <Button size="xs" onClick={() => sendPhoneCode.mutate()} loading={sendPhoneCode.isPending}>
+                                    Send Code
+                                  </Button>
+                                </>
+                              ) : (
+                                <>
+                                  <input
+                                    type="text" value={verifyCode} onChange={e => setVerifyCode(e.target.value)}
+                                    placeholder="6-digit code" maxLength={6} className="input-field text-xs py-1.5 w-32"
+                                  />
+                                  <Button size="xs" onClick={() => confirmPhoneCode.mutate()} loading={confirmPhoneCode.isPending}>
+                                    Verify
+                                  </Button>
+                                </>
+                              )}
+                              <button onClick={() => { setPhoneVerifyMode(false); setCodeSent(false) }} className="text-gray-400 hover:text-gray-600">
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ) : (
+                            <button onClick={() => setPhoneVerifyMode(true)} className="text-xs text-primary-600 hover:underline mt-1 flex items-center gap-1">
+                              <Smartphone className="w-3 h-3" /> Verify Phone
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div className="grid md:grid-cols-2 gap-5">

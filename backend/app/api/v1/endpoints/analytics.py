@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select
@@ -27,15 +28,17 @@ async def record_event(
     resource_type: str,
     resource_id: str,
     user_id: str | None = None,
-    business_id: str | None = None,
+    organization_id: str | None = None,
     metadata_json: dict | None = None,
 ):
+    parsed_user_id = uuid.UUID(user_id) if user_id else None
+    parsed_org_id = uuid.UUID(organization_id) if organization_id else None
     event = AnalyticsEvent(
         event_type=event_type,
         resource_type=resource_type,
         resource_id=resource_id,
-        user_id=user_id,
-        business_id=business_id,
+        user_id=parsed_user_id,
+        organization_id=parsed_org_id,
         metadata_json=metadata_json,
     )
     db.add(event)
@@ -111,7 +114,7 @@ async def business_analytics(
         count = await db.execute(
             select(func.count(AnalyticsEvent.id)).where(
                 AnalyticsEvent.event_type == event_type,
-                AnalyticsEvent.business_id == business_id,
+                AnalyticsEvent.organization_id == business_id,
             )
         )
         event_counts[event_type] = count.scalar() or 0
@@ -122,8 +125,7 @@ async def business_analytics(
 
     fav_count = await db.execute(
         select(func.count(Favorite.id)).where(
-            Favorite.resource_type == "business",
-            Favorite.resource_id == business_id,
+            Favorite.organization_id == business_id,
         )
     )
     favorite_count = fav_count.scalar() or 0
@@ -166,17 +168,17 @@ async def resource_analytics(
         result = await db.execute(select(Mosque).where(Mosque.id == resource_id))
         obj = result.scalar_one_or_none()
         if obj:
-            owner_id = str(obj.primary_admin_id)
+            owner_id = str(obj.owner_id)
     elif resource_type == "charity":
         result = await db.execute(select(Charity).where(Charity.id == resource_id))
         obj = result.scalar_one_or_none()
         if obj:
-            owner_id = str(obj.primary_admin_id)
+            owner_id = str(obj.owner_id)
     elif resource_type == "education":
         result = await db.execute(select(EducationalInstitution).where(EducationalInstitution.id == resource_id))
         obj = result.scalar_one_or_none()
         if obj:
-            owner_id = str(obj.primary_admin_id)
+            owner_id = str(obj.owner_id)
     else:
         obj = None
 
@@ -198,8 +200,7 @@ async def resource_analytics(
 
     fav_count = await db.execute(
         select(func.count(Favorite.id)).where(
-            Favorite.resource_type == resource_type,
-            Favorite.resource_id == resource_id,
+            Favorite.organization_id == resource_id,
         )
     )
 
@@ -288,7 +289,7 @@ async def mosque_dashboard(
     db: AsyncSession = Depends(get_db),
 ):
     mosques_result = await db.execute(
-        select(Mosque).where(Mosque.primary_admin_id == user.id)
+        select(Mosque).where(Mosque.owner_id == user.id)
     )
     mosques = mosques_result.scalars().all()
 
@@ -318,7 +319,7 @@ async def charity_dashboard(
     db: AsyncSession = Depends(get_db),
 ):
     charities_result = await db.execute(
-        select(Charity).where(Charity.primary_admin_id == user.id)
+        select(Charity).where(Charity.owner_id == user.id)
     )
     charities = charities_result.scalars().all()
 
