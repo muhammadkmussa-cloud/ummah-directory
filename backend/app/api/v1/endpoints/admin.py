@@ -777,7 +777,7 @@ async def list_audit_logs(
     logs = result.scalars().all()
     return [
         {
-            "id": str(l.id),
+            "id": str(log.id),
             "action": log.action,
             "resource_type": log.resource_type,
             "resource_id": log.resource_id,

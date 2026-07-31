@@ -38,7 +38,7 @@ export function usePushNotifications() {
       if (!subscription) {
         subscription = await reg.pushManager.subscribe({
           userVisibleOnly: true,
-          applicationServerKey: publicKey,
+          applicationServerKey: publicKey as BufferSource,
         });
       }
 
