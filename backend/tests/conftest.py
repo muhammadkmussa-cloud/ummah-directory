@@ -134,11 +134,11 @@ async def verified_user(api_client):
 async def auth_token(api_client):
     import uuid
 
-    from passlib.context import CryptContext
+    from app.core.security import hash_password
 
     uid = uuid.uuid4()
     email = f"auth-{uid.hex[:8]}@example.org"
-    pwd = CryptContext(schemes=["bcrypt"], deprecated="auto").hash("StrongPass1234!")
+    pwd = hash_password("StrongPass1234!")
     role_id = None
     with sync_engine.begin() as conn:
         result = conn.execute(text("SELECT id FROM roles WHERE name = 'registered_user'"))
@@ -154,8 +154,9 @@ async def auth_token(api_client):
         conn.execute(
             text(f"""
             INSERT INTO users (id, email, full_name, password_hash, is_email_verified,
-                               is_active, role_id, preferred_language)
-            VALUES ('{uid}', '{email}', 'Auth User', '{pwd}', TRUE, TRUE, '{role_id}', 'en')
+                               is_phone_verified, is_active, role_id, preferred_language)
+            VALUES ('{uid}', '{email}', 'Auth User', '{pwd}', TRUE, FALSE, TRUE,
+                    '{role_id}', 'en')
         """)
         )
     resp = await api_client.post(
