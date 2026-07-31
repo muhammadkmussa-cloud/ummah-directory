@@ -1,9 +1,8 @@
 import uuid
 from datetime import UTC, datetime
-from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select, update, or_
+from sqlalchemy import or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload, with_polymorphic
 
@@ -14,20 +13,21 @@ from app.models.business import OwnershipClaim
 from app.models.media import MediaFile
 from app.models.organization import Organization, OrganizationManager
 from app.models.user import User
-from app.schemas.organization import (
-    OrganizationCreate,
-    OrganizationResponse,
-    OrganizationUpdate,
-    OrganizationManagerResponse,
-    ManagerAssignRequest,
-)
 from app.schemas.common import MessageResponse, PaginatedResponse
 from app.schemas.media import MediaResponse
+from app.schemas.organization import (
+    ManagerAssignRequest,
+    OrganizationCreate,
+    OrganizationManagerResponse,
+    OrganizationResponse,
+    OrganizationUpdate,
+)
 from app.services.audit_service import log_action
 from app.services.notification_service import create_notification
 from app.utils.crypto import generate_random_token
 
 router = APIRouter()
+
 
 def slugify(name: str) -> str:
     return name.lower().replace(" ", "-").replace("/", "-")[:200]
@@ -37,11 +37,11 @@ def slugify(name: str) -> str:
 async def list_organizations(
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
-    organization_type: Optional[str] = None,
-    city: Optional[str] = None,
-    country: Optional[str] = None,
-    verified: Optional[bool] = None,
-    search: Optional[str] = None,
+    organization_type: str | None = None,
+    city: str | None = None,
+    country: str | None = None,
+    verified: bool | None = None,
+    search: str | None = None,
     sort: str = "newest",
     db: AsyncSession = Depends(get_db),
 ):
@@ -75,6 +75,7 @@ async def list_organizations(
 
     # Need total count
     from sqlalchemy import func
+
     total_q = select(func.count()).select_from(query.subquery())
     total_result = await db.execute(total_q)
     total = total_result.scalar() or 0
@@ -98,9 +99,7 @@ async def get_organization(
     db: AsyncSession = Depends(get_db),
 ):
     org_polymorphic = with_polymorphic(Organization, "*")
-    result = await db.execute(
-        select(org_polymorphic).where(Organization.slug == slug)
-    )
+    result = await db.execute(select(org_polymorphic).where(Organization.slug == slug))
     org = result.scalar_one_or_none()
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found")
@@ -123,14 +122,18 @@ async def update_organization(
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
-        select(Organization).where(Organization.id == id).options(selectinload(Organization.managers))
+        select(Organization)
+        .where(Organization.id == id)
+        .options(selectinload(Organization.managers))
     )
     org = result.scalar_one_or_none()
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found")
 
     is_owner = str(org.owner_id) == str(user.id)
-    is_manager = any(str(m.user_id) == str(user.id) and m.role in ("manager", "editor") for m in org.managers)
+    is_manager = any(
+        str(m.user_id) == str(user.id) and m.role in ("manager", "editor") for m in org.managers
+    )
 
     if not (is_owner or is_manager):
         raise HTTPException(status_code=403, detail="Not authorized to update this organization")
@@ -138,7 +141,7 @@ async def update_organization(
     update_data = req.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(org, field, value)
-    
+
     await log_action(db, user.id, "organization.update", "organization", str(id))
     await db.flush()
 
@@ -166,6 +169,7 @@ async def delete_organization(
 
 # --- Media ---
 
+
 @router.get("/{id}/media")
 async def list_organization_media(
     id: uuid.UUID,
@@ -178,26 +182,39 @@ async def list_organization_media(
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found")
 
-    base_q = select(MediaFile).where(MediaFile.organization_id == id).order_by(MediaFile.sort_order, MediaFile.created_at.desc())
+    base_q = (
+        select(MediaFile)
+        .where(MediaFile.organization_id == id)
+        .order_by(MediaFile.sort_order, MediaFile.created_at.desc())
+    )
     if file_type:
         base_q = base_q.where(MediaFile.file_type == file_type)
 
     from sqlalchemy import func
+
     total = (await db.execute(select(func.count()).select_from(base_q.subquery()))).scalar() or 0
     result = await db.execute(base_q.offset((page - 1) * size).limit(size))
     items = [
         MediaResponse(
-            id=str(m.id), file_type=m.file_type, file_url=m.file_url,
-            thumbnail_url=m.thumbnail_url, file_size=m.file_size,
-            mime_type=m.mime_type, alt_text=m.alt_text,
-            sort_order=m.sort_order, created_at=m.created_at,
-        ) for m in result.scalars().all()
+            id=str(m.id),
+            file_type=m.file_type,
+            file_url=m.file_url,
+            thumbnail_url=m.thumbnail_url,
+            file_size=m.file_size,
+            mime_type=m.mime_type,
+            alt_text=m.alt_text,
+            sort_order=m.sort_order,
+            created_at=m.created_at,
+        )
+        for m in result.scalars().all()
     ]
-    return PaginatedResponse(items=items, total=total, page=page, size=size,
-                             pages=(total + size - 1) // size)
+    return PaginatedResponse(
+        items=items, total=total, page=page, size=size, pages=(total + size - 1) // size
+    )
 
 
 # --- Managers ---
+
 
 @router.get("/{id}/manager", response_model=OrganizationManagerResponse)
 async def get_manager(
@@ -206,7 +223,9 @@ async def get_manager(
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
-        select(Organization).where(Organization.id == id).options(selectinload(Organization.managers))
+        select(Organization)
+        .where(Organization.id == id)
+        .options(selectinload(Organization.managers))
     )
     org = result.scalar_one_or_none()
     if not org:
@@ -215,13 +234,15 @@ async def get_manager(
     is_owner = str(org.owner_id) == str(user.id)
     is_manager = any(str(m.user_id) == str(user.id) for m in org.managers)
 
-    if not (is_owner or is_manager or (user.role and user.role.name in {"super_admin", "moderator"})):
+    if not (
+        is_owner or is_manager or (user.role and user.role.name in {"super_admin", "moderator"})
+    ):
         raise HTTPException(status_code=403, detail="Not authorized")
 
     manager = next(iter(org.managers), None)
     if not manager:
         raise HTTPException(status_code=404, detail="No manager assigned")
-        
+
     return OrganizationManagerResponse.model_validate(manager)
 
 
@@ -234,7 +255,9 @@ async def assign_manager(
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
-        select(Organization).where(Organization.id == id).options(selectinload(Organization.managers))
+        select(Organization)
+        .where(Organization.id == id)
+        .options(selectinload(Organization.managers))
     )
     org = result.scalar_one_or_none()
     if not org:
@@ -257,20 +280,25 @@ async def assign_manager(
         await db.delete(m)
 
     # Assign new manager
-    new_manager = OrganizationManager(
-        organization_id=id,
-        user_id=target_user.id,
-        role="manager"
-    )
+    new_manager = OrganizationManager(organization_id=id, user_id=target_user.id, role="manager")
     db.add(new_manager)
     await db.flush()
 
-    await log_action(db, user.id, "organization.manager_assigned", "organization", str(id), details={"new_manager_id": str(target_user.id)})
-    
+    await log_action(
+        db,
+        user.id,
+        "organization.manager_assigned",
+        "organization",
+        str(id),
+        details={"new_manager_id": str(target_user.id)},
+    )
+
     await create_notification(
-        db, str(target_user.id), "organization.manager_assigned",
+        db,
+        str(target_user.id),
+        "organization.manager_assigned",
         "Assigned as Manager",
-        f"You have been assigned as the manager for '{org.name}'."
+        f"You have been assigned as the manager for '{org.name}'.",
     )
 
     return OrganizationManagerResponse.model_validate(new_manager)
@@ -284,7 +312,9 @@ async def remove_manager(
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
-        select(Organization).where(Organization.id == id).options(selectinload(Organization.managers))
+        select(Organization)
+        .where(Organization.id == id)
+        .options(selectinload(Organization.managers))
     )
     org = result.scalar_one_or_none()
     if not org:
@@ -298,7 +328,7 @@ async def remove_manager(
 
     for m in org.managers:
         await db.delete(m)
-        
+
     await log_action(db, user.id, "organization.manager_removed", "organization", str(id))
 
     return {"message": "Manager removed successfully"}

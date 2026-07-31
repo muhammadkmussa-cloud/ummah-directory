@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, String, Text, Integer, DateTime
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -28,7 +28,9 @@ class OrganizationPost(BaseModelMixin):
 
     organization: Mapped[Organization] = relationship("Organization", backref="posts")
     author: Mapped[User] = relationship("User")
-    likes: Mapped[list[PostLike]] = relationship("PostLike", back_populates="post", cascade="all, delete-orphan")
+    likes: Mapped[list[PostLike]] = relationship(
+        "PostLike", back_populates="post", cascade="all, delete-orphan"
+    )
 
 
 class PostLike(BaseModelMixin):

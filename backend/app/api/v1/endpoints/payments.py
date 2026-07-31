@@ -1,18 +1,19 @@
-from app.schemas.common import MessageResponse
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi import Header as HeaderParam
-from sqlalchemy import cast, select, String, or_
+from sqlalchemy import String, cast, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
+from app.core.rate_limit import limiter
 from app.models.donation import Donation
 from app.models.payment import Payment
 from app.models.saved_payment_method import SavedPaymentMethod
 from app.models.user import User
 from app.payments import get_gateway
+from app.schemas.common import MessageResponse
 from app.schemas.payment import PaymentIntentRequest, PaymentIntentResponse
 from app.services.audit_service import log_action
 from app.services.payment_service import PaymentService
@@ -21,8 +22,10 @@ router = APIRouter()
 
 
 @router.post("/create-intent", response_model=PaymentIntentResponse)
+@limiter.limit("10/minute")
 async def create_payment_intent(
     req: PaymentIntentRequest,
+    request: Request,
     idempotency_key: str | None = HeaderParam(None),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -48,7 +51,7 @@ async def create_payment_intent(
     try:
         gw = await PaymentService.get_configured_gateway(db, req.gateway)
     except ValueError:
-        raise HTTPException(status_code=400, detail=f"Unsupported gateway: {req.gateway}")
+        raise HTTPException(status_code=400, detail=f"Unsupported gateway: {req.gateway}") from None
 
     intent = await gw.create_payment(Decimal(str(req.amount)), req.currency, req.metadata)
 
@@ -88,7 +91,7 @@ async def get_payment(
         raise HTTPException(status_code=404, detail="Payment not found")
     if str(payment.user_id) != str(user.id) and user.role.name not in ["super_admin", "moderator"]:
         raise HTTPException(status_code=403, detail="Not your payment")
-        
+
     return {
         "id": str(payment.id),
         "amount": float(payment.amount),
@@ -100,6 +103,7 @@ async def get_payment(
         "created_at": payment.created_at,
     }
 
+
 @router.post("/{gateway}/webhook")
 async def payment_webhook(
     gateway: str,
@@ -109,7 +113,7 @@ async def payment_webhook(
     try:
         gw = await PaymentService.get_configured_gateway(db, gateway)
     except ValueError:
-        raise HTTPException(status_code=400, detail=f"Unsupported gateway: {gateway}")
+        raise HTTPException(status_code=400, detail=f"Unsupported gateway: {gateway}") from None
 
     payload = await request.body()
     headers = dict(request.headers)
@@ -117,11 +121,12 @@ async def payment_webhook(
     event = await gw.verify_webhook(payload, headers)
     if not event:
         return {"status": "ignored"}
-        
+
     from app.core.cache import get_redis
+
     redis = await get_redis()
     event_cache_key = f"webhook_event:{gateway}:{event.event_id}"
-    
+
     # Try to set the key. If it exists (returns False/0), it's a replay.
     # Expiry is set to 7 days (604800 seconds) to match typical retry windows
     if not await redis.set(event_cache_key, "1", nx=True, ex=604800):
@@ -139,7 +144,11 @@ async def payment_webhook(
         payment.gateway_response = {**(payment.gateway_response or {}), **event.metadata}
 
     await log_action(
-        db, payment.user_id, f"payment.{event.status}", "payment", str(payment.id),
+        db,
+        payment.user_id,
+        f"payment.{event.status}",
+        "payment",
+        str(payment.id),
         details={"gateway": gateway, "event": event.type},
     )
     return {"status": "processed"}
@@ -206,8 +215,9 @@ async def download_invoice(
         raise HTTPException(status_code=400, detail="Only succeeded payments have invoices")
 
     # Generate PDF invoice
-    from fpdf import FPDF
     from datetime import datetime
+
+    from fpdf import FPDF
 
     ref_type_map = {
         "premier_subscription": "Premier Subscription",
@@ -235,12 +245,24 @@ async def download_invoice(
     pdf.set_font("Helvetica", "B", 11)
     pdf.cell(60, 7, "Date:", new_x="RIGHT")
     pdf.set_font("Helvetica", "", 11)
-    pdf.cell(0, 7, payment.created_at.strftime("%Y-%m-%d") if payment.created_at else "N/A", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(
+        0,
+        7,
+        payment.created_at.strftime("%Y-%m-%d") if payment.created_at else "N/A",
+        new_x="LMARGIN",
+        new_y="NEXT",
+    )
 
     pdf.set_font("Helvetica", "B", 11)
     pdf.cell(60, 7, "Payment Method:", new_x="RIGHT")
     pdf.set_font("Helvetica", "", 11)
-    pdf.cell(0, 7, payment.gateway.replace("_", " ").title() if payment.gateway else "N/A", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(
+        0,
+        7,
+        payment.gateway.replace("_", " ").title() if payment.gateway else "N/A",
+        new_x="LMARGIN",
+        new_y="NEXT",
+    )
 
     pdf.set_font("Helvetica", "B", 11)
     pdf.cell(60, 7, "Description:", new_x="RIGHT")
@@ -259,22 +281,39 @@ async def download_invoice(
     pdf.ln(8)
 
     pdf.set_font("Helvetica", "B", 14)
-    pdf.cell(0, 10, f"Total: {float(payment.amount):,.2f} {payment.currency}", align="R", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(
+        0,
+        10,
+        f"Total: {float(payment.amount):,.2f} {payment.currency}",
+        align="R",
+        new_x="LMARGIN",
+        new_y="NEXT",
+    )
     pdf.ln(12)
 
     pdf.set_font("Helvetica", "I", 9)
     pdf.cell(0, 5, "Thank you for your business.", align="C", new_x="LMARGIN", new_y="NEXT")
-    pdf.cell(0, 5, "This invoice is auto-generated by Umma Directory.", align="C", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(
+        0,
+        5,
+        "This invoice is auto-generated by Umma Directory.",
+        align="C",
+        new_x="LMARGIN",
+        new_y="NEXT",
+    )
 
     pdf_bytes = bytes(pdf.output())
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f'attachment; filename="invoice-{str(payment.id)[:8]}.pdf"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="invoice-{str(payment.id)[:8]}.pdf"'
+        },
     )
 
 
 # --- Saved Payment Methods ---
+
 
 @router.get("/methods")
 async def list_saved_methods(
@@ -286,15 +325,18 @@ async def list_saved_methods(
         .where(SavedPaymentMethod.user_id == user.id, SavedPaymentMethod.deleted_at.is_(None))
         .order_by(SavedPaymentMethod.is_default.desc(), SavedPaymentMethod.created_at.desc())
     )
-    return [{
-        "id": str(m.id),
-        "gateway": m.gateway,
-        "last_four": m.last_four,
-        "card_brand": m.card_brand,
-        "is_default": m.is_default,
-        "expires_at": m.expires_at,
-        "created_at": m.created_at,
-    } for m in result.scalars().all()]
+    return [
+        {
+            "id": str(m.id),
+            "gateway": m.gateway,
+            "last_four": m.last_four,
+            "card_brand": m.card_brand,
+            "is_default": m.is_default,
+            "expires_at": m.expires_at,
+            "created_at": m.created_at,
+        }
+        for m in result.scalars().all()
+    ]
 
 
 @router.post("/methods", response_model=None)
@@ -327,11 +369,17 @@ async def save_payment_method(
                 SavedPaymentMethod.user_id == user.id, SavedPaymentMethod.is_default
             )
         )
-        defaults = (await db.execute(
-            select(SavedPaymentMethod).where(
-                SavedPaymentMethod.user_id == user.id, SavedPaymentMethod.is_default
+        defaults = (
+            (
+                await db.execute(
+                    select(SavedPaymentMethod).where(
+                        SavedPaymentMethod.user_id == user.id, SavedPaymentMethod.is_default
+                    )
+                )
             )
-        )).scalars().all()
+            .scalars()
+            .all()
+        )
         for d in defaults:
             d.is_default = False
 
@@ -341,8 +389,11 @@ async def save_payment_method(
         last_four=last_four,
         card_brand=card_brand,
         expires_at=expires_at,
-        is_default=set_default or not await db.scalar(
-            select(SavedPaymentMethod).where(SavedPaymentMethod.user_id == user.id, SavedPaymentMethod.deleted_at.is_(None))
+        is_default=set_default
+        or not await db.scalar(
+            select(SavedPaymentMethod).where(
+                SavedPaymentMethod.user_id == user.id, SavedPaymentMethod.deleted_at.is_(None)
+            )
         ),
         user_id=user.id,
     )

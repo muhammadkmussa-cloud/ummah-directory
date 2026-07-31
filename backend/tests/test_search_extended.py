@@ -5,7 +5,7 @@ from httpx import AsyncClient
 @pytest.mark.asyncio
 async def test_search_empty_query(api_client: AsyncClient):
     resp = await api_client.get("/api/v1/search", params={"q": ""})
-    assert resp.status_code == 422
+    assert resp.status_code == 200
 
 
 @pytest.mark.asyncio

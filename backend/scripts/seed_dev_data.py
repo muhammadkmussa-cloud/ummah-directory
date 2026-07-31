@@ -10,38 +10,39 @@ Creates:
 
 Idempotent - safe to re-run.
 """
+
 import asyncio
 import os
 import sys
 import uuid
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.core.database import async_session_factory
 from app.core.security import hash_password
-from app.models.user import Role, User
-from app.models.permission import Permission, role_permissions
-from app.models.business import Business, Category, BusinessBranch
-from app.models.mosque import Mosque
-from app.models.charity import Charity, CharityCampaign
-from app.models.education import EducationalInstitution
-from app.models.organization import Organization, OrganizationManager
-from app.models.review import Review, ReviewReply
-from app.models.favorite import Favorite
-from app.models.event import Event
-from app.models.notification import Notification, NotificationPreference
 from app.models.ad_campaign import AdCampaign
 from app.models.advertisement import Advertisement
-from app.models.donation import Donation
 from app.models.analytics import AnalyticsEvent
-from app.models.verification import VerificationDocument
+from app.models.business import Business, BusinessBranch, Category
+from app.models.charity import Charity, CharityCampaign
+from app.models.cms import BlogPost, CMSBanner, CMSPage
+from app.models.donation import Donation
+from app.models.education import EducationalInstitution
+from app.models.event import Event
+from app.models.favorite import Favorite
 from app.models.media import MediaFile
-from app.models.cms import CMSPage, CMSBanner, BlogPost
-from app.models.report import Report
-from app.models.post import OrganizationPost
+from app.models.mosque import Mosque
+from app.models.notification import Notification, NotificationPreference
+from app.models.organization import Organization, OrganizationManager
 from app.models.payment import PaymentProvider
+from app.models.permission import Permission, role_permissions
+from app.models.post import OrganizationPost
 from app.models.premier import PremierSubscription
+from app.models.report import Report
+from app.models.review import Review, ReviewReply
+from app.models.user import Role, User
+from app.models.verification import VerificationDocument
 
 PERMISSION_DEFINITIONS = [
     ("super_admin", "Super Administrator", "Unrestricted system access"),
@@ -118,24 +119,50 @@ ROLES_CONFIG = {
     "moderator": {
         "description": "Content moderation and organization approval",
         "permissions": [
-            "users.view", "content.moderate", "content.delete", "content.feature", "content.restore",
-            "business.verify", "mosque.verify", "charity.verify", "education.verify",
-            "ad.approve", "claims.view", "claims.approve",
-            "report.view", "report.resolve", "audit.view",
+            "users.view",
+            "content.moderate",
+            "content.delete",
+            "content.feature",
+            "content.restore",
+            "business.verify",
+            "mosque.verify",
+            "charity.verify",
+            "education.verify",
+            "ad.approve",
+            "claims.view",
+            "claims.approve",
+            "report.view",
+            "report.resolve",
+            "audit.view",
             "user.warn",
         ],
     },
     "registered_user": {
         "description": "Email-verified registered user with standard platform access",
         "permissions": [
-            "business.create", "business.edit", "business.delete",
-            "mosque.create", "mosque.edit", "mosque.delete",
-            "charity.create", "charity.edit", "charity.delete",
-            "education.create", "education.edit", "education.delete",
-            "campaign.create", "campaign.edit", "campaign.delete",
-            "event.create", "event.edit", "event.delete",
-            "review.create", "review.edit", "review.delete",
-            "favorite.create", "favorite.delete",
+            "business.create",
+            "business.edit",
+            "business.delete",
+            "mosque.create",
+            "mosque.edit",
+            "mosque.delete",
+            "charity.create",
+            "charity.edit",
+            "charity.delete",
+            "education.create",
+            "education.edit",
+            "education.delete",
+            "campaign.create",
+            "campaign.edit",
+            "campaign.delete",
+            "event.create",
+            "event.edit",
+            "event.delete",
+            "review.create",
+            "review.edit",
+            "review.delete",
+            "favorite.create",
+            "favorite.delete",
             "donation.create",
             "report.create",
             "claim.create",
@@ -149,108 +176,235 @@ ROLES_CONFIG = {
 }
 
 ACCOUNTS = [
-    {"email": "admin@ummadirectory.test", "password": "Admin@123456",
-     "full_name": "Super Administrator", "role": "super_admin",
-     "phone": "+254700000001", "city": "Nairobi"},
-    {"email": "moderator1@ummadirectory.test", "password": "Moderator@123",
-     "full_name": "Aisha Mohammed", "role": "moderator",
-     "phone": "+254700000002", "city": "Nairobi"},
-    {"email": "moderator2@ummadirectory.test", "password": "Moderator@123",
-     "full_name": "Omar Hassan", "role": "moderator",
-     "phone": "+254700000003", "city": "Mombasa"},
-    {"email": "moderator3@ummadirectory.test", "password": "Moderator@123",
-     "full_name": "Fatima Ali", "role": "moderator",
-     "phone": "+254700000004", "city": "Kisumu"},
-    {"email": "moderator4@ummadirectory.test", "password": "Moderator@123",
-     "full_name": "Hassan Ibrahim", "role": "moderator",
-     "phone": "+254700000005", "city": "Nakuru"},
-    {"email": "moderator5@ummadirectory.test", "password": "Moderator@123",
-     "full_name": "Zainab Abdullah", "role": "moderator",
-     "phone": "+254700000006", "city": "Eldoret"},
-    {"email": "user1@ummadirectory.test", "password": "User@123",
-     "full_name": "Khalid Abdi", "role": "registered_user",
-     "phone": "+254700000007", "city": "Nairobi"},
-    {"email": "user2@ummadirectory.test", "password": "User@123",
-     "full_name": "Amina Omar", "role": "registered_user",
-     "phone": "+254700000008", "city": "Mombasa"},
-    {"email": "user3@ummadirectory.test", "password": "User@123",
-     "full_name": "Yusuf Mohamed", "role": "registered_user",
-     "phone": "+254700000009", "city": "Nairobi"},
-    {"email": "user4@ummadirectory.test", "password": "User@123",
-     "full_name": "Maryam Hassan", "role": "registered_user",
-     "phone": "+254700000010", "city": "Kisumu"},
-    {"email": "user5@ummadirectory.test", "password": "User@123",
-     "full_name": "Ibrahim Musa", "role": "registered_user",
-     "phone": "+254700000011", "city": "Nairobi"},
-    {"email": "user6@ummadirectory.test", "password": "User@123",
-     "full_name": "Halima Said", "role": "registered_user",
-     "phone": "+254700000012", "city": "Nakuru"},
-    {"email": "user7@ummadirectory.test", "password": "User@123",
-     "full_name": "Abdul Rahman", "role": "registered_user",
-     "phone": "+254700000013", "city": "Mombasa"},
-    {"email": "user8@ummadirectory.test", "password": "User@123",
-     "full_name": "Safiya Ahmed", "role": "registered_user",
-     "phone": "+254700000014", "city": "Nairobi"},
-    {"email": "user9@ummadirectory.test", "password": "User@123",
-     "full_name": "Musa Kamau", "role": "registered_user",
-     "phone": "+254700000015", "city": "Eldoret"},
-    {"email": "user10@ummadirectory.test", "password": "User@123",
-     "full_name": "Layla Hussein", "role": "registered_user",
-     "phone": "+254700000016", "city": "Nairobi"},
+    {
+        "email": "admin@ummadirectory.test",
+        "password": "Admin@123456",
+        "full_name": "Super Administrator",
+        "role": "super_admin",
+        "phone": "+254700000001",
+        "city": "Nairobi",
+    },
+    {
+        "email": "moderator1@ummadirectory.test",
+        "password": "Moderator@123",
+        "full_name": "Aisha Mohammed",
+        "role": "moderator",
+        "phone": "+254700000002",
+        "city": "Nairobi",
+    },
+    {
+        "email": "moderator2@ummadirectory.test",
+        "password": "Moderator@123",
+        "full_name": "Omar Hassan",
+        "role": "moderator",
+        "phone": "+254700000003",
+        "city": "Mombasa",
+    },
+    {
+        "email": "moderator3@ummadirectory.test",
+        "password": "Moderator@123",
+        "full_name": "Fatima Ali",
+        "role": "moderator",
+        "phone": "+254700000004",
+        "city": "Kisumu",
+    },
+    {
+        "email": "moderator4@ummadirectory.test",
+        "password": "Moderator@123",
+        "full_name": "Hassan Ibrahim",
+        "role": "moderator",
+        "phone": "+254700000005",
+        "city": "Nakuru",
+    },
+    {
+        "email": "moderator5@ummadirectory.test",
+        "password": "Moderator@123",
+        "full_name": "Zainab Abdullah",
+        "role": "moderator",
+        "phone": "+254700000006",
+        "city": "Eldoret",
+    },
+    {
+        "email": "user1@ummadirectory.test",
+        "password": "User@123",
+        "full_name": "Khalid Abdi",
+        "role": "registered_user",
+        "phone": "+254700000007",
+        "city": "Nairobi",
+    },
+    {
+        "email": "user2@ummadirectory.test",
+        "password": "User@123",
+        "full_name": "Amina Omar",
+        "role": "registered_user",
+        "phone": "+254700000008",
+        "city": "Mombasa",
+    },
+    {
+        "email": "user3@ummadirectory.test",
+        "password": "User@123",
+        "full_name": "Yusuf Mohamed",
+        "role": "registered_user",
+        "phone": "+254700000009",
+        "city": "Nairobi",
+    },
+    {
+        "email": "user4@ummadirectory.test",
+        "password": "User@123",
+        "full_name": "Maryam Hassan",
+        "role": "registered_user",
+        "phone": "+254700000010",
+        "city": "Kisumu",
+    },
+    {
+        "email": "user5@ummadirectory.test",
+        "password": "User@123",
+        "full_name": "Ibrahim Musa",
+        "role": "registered_user",
+        "phone": "+254700000011",
+        "city": "Nairobi",
+    },
+    {
+        "email": "user6@ummadirectory.test",
+        "password": "User@123",
+        "full_name": "Halima Said",
+        "role": "registered_user",
+        "phone": "+254700000012",
+        "city": "Nakuru",
+    },
+    {
+        "email": "user7@ummadirectory.test",
+        "password": "User@123",
+        "full_name": "Abdul Rahman",
+        "role": "registered_user",
+        "phone": "+254700000013",
+        "city": "Mombasa",
+    },
+    {
+        "email": "user8@ummadirectory.test",
+        "password": "User@123",
+        "full_name": "Safiya Ahmed",
+        "role": "registered_user",
+        "phone": "+254700000014",
+        "city": "Nairobi",
+    },
+    {
+        "email": "user9@ummadirectory.test",
+        "password": "User@123",
+        "full_name": "Musa Kamau",
+        "role": "registered_user",
+        "phone": "+254700000015",
+        "city": "Eldoret",
+    },
+    {
+        "email": "user10@ummadirectory.test",
+        "password": "User@123",
+        "full_name": "Layla Hussein",
+        "role": "registered_user",
+        "phone": "+254700000016",
+        "city": "Nairobi",
+    },
 ]
 
 CATEGORY_DEFS = [
-    {"name": "Restaurants", "slug": "restaurants", "icon": "utensils-crossed",
-     "children": ["Halal Restaurants", "Cafes", "Bakeries", "Ice Cream"]},
-    {"name": "Healthcare", "slug": "healthcare", "icon": "stethoscope",
-     "children": ["Hospitals", "Clinics", "Pharmacies", "Dentists"]},
-    {"name": "Education", "slug": "education", "icon": "graduation-cap",
-     "children": ["Islamic Schools", "Madrasas", "Tutoring", "Daycares", "Universities"]},
-    {"name": "Retail", "slug": "retail", "icon": "shopping-bag",
-     "children": ["Clothing", "Books & Gifts", "Supermarkets", "Electronics"]},
-    {"name": "Professional Services", "slug": "professional-services", "icon": "briefcase",
-     "children": ["Lawyers", "Accountants", "IT Services", "Consultants", "Real Estate"]},
-    {"name": "Travel & Accommodation", "slug": "travel", "icon": "plane",
-     "children": ["Hotels", "Travel Agents", "Transport"]},
-    {"name": "Financial Services", "slug": "financial", "icon": "landmark",
-     "children": ["Islamic Banks", "Insurance", "Money Transfer"]},
-    {"name": "Construction & Trades", "slug": "construction", "icon": "hard-hat",
-     "children": ["Contractors", "Electricians", "Plumbers", "Carpenters"]},
+    {
+        "name": "Restaurants",
+        "slug": "restaurants",
+        "icon": "utensils-crossed",
+        "children": ["Halal Restaurants", "Cafes", "Bakeries", "Ice Cream"],
+    },
+    {
+        "name": "Healthcare",
+        "slug": "healthcare",
+        "icon": "stethoscope",
+        "children": ["Hospitals", "Clinics", "Pharmacies", "Dentists"],
+    },
+    {
+        "name": "Education",
+        "slug": "education",
+        "icon": "graduation-cap",
+        "children": ["Islamic Schools", "Madrasas", "Tutoring", "Daycares", "Universities"],
+    },
+    {
+        "name": "Retail",
+        "slug": "retail",
+        "icon": "shopping-bag",
+        "children": ["Clothing", "Books & Gifts", "Supermarkets", "Electronics"],
+    },
+    {
+        "name": "Professional Services",
+        "slug": "professional-services",
+        "icon": "briefcase",
+        "children": ["Lawyers", "Accountants", "IT Services", "Consultants", "Real Estate"],
+    },
+    {
+        "name": "Travel & Accommodation",
+        "slug": "travel",
+        "icon": "plane",
+        "children": ["Hotels", "Travel Agents", "Transport"],
+    },
+    {
+        "name": "Financial Services",
+        "slug": "financial",
+        "icon": "landmark",
+        "children": ["Islamic Banks", "Insurance", "Money Transfer"],
+    },
+    {
+        "name": "Construction & Trades",
+        "slug": "construction",
+        "icon": "hard-hat",
+        "children": ["Contractors", "Electricians", "Plumbers", "Carpenters"],
+    },
 ]
 
 ORGANIZATIONS = [
     {
-        "user_index": 6, "type": "business", "status": "pending",
+        "user_index": 6,
+        "type": "business",
+        "status": "pending",
         "name": "Al-Mina Halal Restaurant & Grill",
         "slug": "al-mina-halal-restaurant-grill",
         "description": "Authentic Somali and Swahili cuisine served in a family-friendly atmosphere. All meat is 100% halal certified. Specializing in grilled meats, fresh seafood, and traditional East African dishes.",
-        "email": "info@almina.co.ke", "phone": "+254711100001",
+        "email": "info@almina.co.ke",
+        "phone": "+254711100001",
         "website": "https://almina.co.ke",
-        "address": "45 River Road, CBD", "city": "Nairobi",
-        "latitude": -1.2856, "longitude": 36.8273,
+        "address": "45 River Road, CBD",
+        "city": "Nairobi",
+        "latitude": -1.2856,
+        "longitude": 36.8273,
         "category": "Halal Restaurants",
-        "is_premier": False, "is_halal_certified": True,
+        "is_premier": False,
+        "is_halal_certified": True,
         "operating_hours": {"mon-fri": "08:00-22:00", "sat-sun": "09:00-23:00"},
         "logo_url": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=200&q=80",
         "cover_image_url": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1000&q=80",
     },
     {
-        "user_index": 7, "type": "mosque", "status": "approved",
+        "user_index": 7,
+        "type": "mosque",
+        "status": "approved",
         "name": "Jamia Mosque Nairobi",
         "slug": "jamia-mosque-nairobi",
         "description": "The historic central mosque located in Nairobi CBD. Offers daily congregational prayers, Friday Jumuah, Islamic library, educational lectures, and community welfare services.",
-        "email": "info@jamiamosque.or.ke", "phone": "+254202243046",
+        "email": "info@jamiamosque.or.ke",
+        "phone": "+254202243046",
         "website": "https://jamiamosque.or.ke",
-        "address": "Banda Street, CBD", "city": "Nairobi",
-        "latitude": -1.2842, "longitude": 36.8228,
+        "address": "Banda Street, CBD",
+        "city": "Nairobi",
+        "latitude": -1.2842,
+        "longitude": 36.8228,
         "imam_name": "Sheikh Muhammad Juma",
         "has_women_facilities": True,
         "has_parking": True,
         "has_children_facilities": True,
         "is_wheelchair_accessible": True,
         "prayer_times": {
-            "fajr": "05:15", "dhuhr": "13:00", "asr": "16:30",
-            "maghrib": "18:45", "isha": "20:15", "jumuah": "13:00",
+            "fajr": "05:15",
+            "dhuhr": "13:00",
+            "asr": "16:30",
+            "maghrib": "18:45",
+            "isha": "20:15",
+            "jumuah": "13:00",
         },
         "facilities": {"wudu_area": True, "library": True, "classrooms": True},
         "community_services": {"marriage_counseling": True, "food_bank": True},
@@ -258,21 +412,30 @@ ORGANIZATIONS = [
         "cover_image_url": "https://images.unsplash.com/photo-1564121211835-e88c852648ab?auto=format&fit=crop&w=1000&q=80",
     },
     {
-        "user_index": 7, "type": "mosque", "status": "approved",
+        "user_index": 7,
+        "type": "mosque",
+        "status": "approved",
         "name": "Al-Nur Central Mosque",
         "slug": "al-nur-central-mosque",
         "description": "A vibrant community mosque serving the Muslim community with daily prayers, Friday sermons, Quran classes, and community outreach programs. Facilities include separate prayer halls for men and women.",
-        "email": "info@alnurmosque.org", "phone": "+254711100002",
-        "address": "78 Kenyatta Avenue", "city": "Mombasa",
-        "latitude": -4.0435, "longitude": 39.6682,
+        "email": "info@alnurmosque.org",
+        "phone": "+254711100002",
+        "address": "78 Kenyatta Avenue",
+        "city": "Mombasa",
+        "latitude": -4.0435,
+        "longitude": 39.6682,
         "imam_name": "Sheikh Ahmed Khalid",
         "has_women_facilities": True,
         "has_parking": True,
         "has_children_facilities": True,
         "is_wheelchair_accessible": True,
         "prayer_times": {
-            "fajr": "05:00", "dhuhr": "12:30", "asr": "15:45",
-            "maghrib": "18:30", "isha": "19:45", "jumuah": "13:00",
+            "fajr": "05:00",
+            "dhuhr": "12:30",
+            "asr": "15:45",
+            "maghrib": "18:30",
+            "isha": "19:45",
+            "jumuah": "13:00",
         },
         "facilities": {"wudu_area": True, "library": True, "classrooms": True},
         "community_services": {"marriage_counseling": True, "food_bank": True},
@@ -280,14 +443,19 @@ ORGANIZATIONS = [
         "cover_image_url": "https://images.unsplash.com/photo-1597910039820-3ef814b9a6e0?auto=format&fit=crop&w=1000&q=80",
     },
     {
-        "user_index": 8, "type": "educational_institution", "status": "pending",
+        "user_index": 8,
+        "type": "educational_institution",
+        "status": "pending",
         "name": "Al-Hikma Islamic Academy",
         "slug": "al-hikma-islamic-academy",
         "description": "A premier Islamic school offering integrated curriculum combining Kenya national curriculum with Islamic studies, Quran memorization, and Arabic language. Serving students from pre-primary to secondary level.",
-        "email": "admissions@alhikma.ac.ke", "phone": "+254711100003",
+        "email": "admissions@alhikma.ac.ke",
+        "phone": "+254711100003",
         "website": "https://alhikma.ac.ke",
-        "address": "123 Ngong Road", "city": "Nairobi",
-        "latitude": -1.3010, "longitude": 36.7750,
+        "address": "123 Ngong Road",
+        "city": "Nairobi",
+        "latitude": -1.3010,
+        "longitude": 36.7750,
         "institution_type": "school",
         "curriculum": "Kenya CBC + Islamic Studies",
         "has_girls_section": True,
@@ -299,14 +467,19 @@ ORGANIZATIONS = [
         "cover_image_url": "https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=1000&q=80",
     },
     {
-        "user_index": 9, "type": "charity", "status": "approved",
+        "user_index": 9,
+        "type": "charity",
+        "status": "approved",
         "name": "Rahma Trust Foundation",
         "slug": "rahma-trust-foundation",
         "description": "A charitable organization dedicated to providing humanitarian aid, orphan sponsorship, clean water projects, and educational support to underprivileged communities across East Africa.",
-        "email": "info@rahmafoundation.org", "phone": "+254711100004",
+        "email": "info@rahmafoundation.org",
+        "phone": "+254711100004",
         "website": "https://rahmafoundation.org",
-        "address": "56 State House Road", "city": "Nairobi",
-        "latitude": -1.2810, "longitude": 36.8130,
+        "address": "56 State House Road",
+        "city": "Nairobi",
+        "latitude": -1.2810,
+        "longitude": 36.8130,
         "registration_number": "CHA/2024/78901",
         "mission_statement": "Empowering communities through sustainable development, education, and humanitarian aid.",
         "bank_verified": True,
@@ -314,14 +487,19 @@ ORGANIZATIONS = [
         "cover_image_url": "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&w=1000&q=80",
     },
     {
-        "user_index": 10, "type": "charity", "status": "pending",
+        "user_index": 10,
+        "type": "charity",
+        "status": "pending",
         "name": "Ummah Development Network",
         "slug": "ummah-development-network",
         "description": "An NGO focused on community development, vocational training, microfinance initiatives, and youth empowerment programs across Kenya.",
-        "email": "contact@ummahdev.org", "phone": "+254711100005",
+        "email": "contact@ummahdev.org",
+        "phone": "+254711100005",
         "website": "https://ummahdev.org",
-        "address": "234 Moi Avenue", "city": "Kisumu",
-        "latitude": -0.1022, "longitude": 34.7617,
+        "address": "234 Moi Avenue",
+        "city": "Kisumu",
+        "latitude": -0.1022,
+        "longitude": 34.7617,
         "registration_number": "NGO/2025/45678",
         "mission_statement": "Building self-reliant communities through education, enterprise, and empowerment.",
         "bank_verified": False,
@@ -329,75 +507,105 @@ ORGANIZATIONS = [
         "cover_image_url": "https://images.unsplash.com/photo-1593113598332-cd288d649433?auto=format&fit=crop&w=1000&q=80",
     },
     {
-        "user_index": 11, "type": "business", "status": "approved",
+        "user_index": 11,
+        "type": "business",
+        "status": "approved",
         "name": "Al-Shifa Medical Center",
         "slug": "al-shifa-medical-center",
         "description": "A modern medical facility offering comprehensive healthcare services including general medicine, pediatrics, gynecology, radiology, and emergency care. Open 24/7 with qualified medical staff.",
-        "email": "info@alshifamedical.co.ke", "phone": "+254711100006",
+        "email": "info@alshifamedical.co.ke",
+        "phone": "+254711100006",
         "website": "https://alshifamedical.co.ke",
-        "address": "89 Hospital Road, Upper Hill", "city": "Nairobi",
-        "latitude": -1.2960, "longitude": 36.8150,
+        "address": "89 Hospital Road, Upper Hill",
+        "city": "Nairobi",
+        "latitude": -1.2960,
+        "longitude": 36.8150,
         "category": "Hospitals",
-        "is_premier": True, "is_halal_certified": False,
+        "is_premier": True,
+        "is_halal_certified": False,
         "operating_hours": {"daily": "00:00-24:00"},
         "logo_url": "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=200&q=80",
         "cover_image_url": "https://images.unsplash.com/photo-1587351021759-3772687b7e1f?auto=format&fit=crop&w=1000&q=80",
     },
     {
-        "user_index": 12, "type": "business", "status": "pending",
+        "user_index": 12,
+        "type": "business",
+        "status": "pending",
         "name": "Qasr Al-Salam Boutique Hotel",
         "slug": "qasr-al-salam-boutique-hotel",
         "description": "A luxurious boutique hotel with stunning ocean views, offering halal dining, swimming pool, spa facilities, and conference rooms. Perfect for business and leisure travelers.",
-        "email": "reservations@qasralsalam.com", "phone": "+254711100007",
+        "email": "reservations@qasralsalam.com",
+        "phone": "+254711100007",
         "website": "https://qasralsalam.com",
-        "address": "12 Beach Road, Nyali", "city": "Mombasa",
-        "latitude": -4.0330, "longitude": 39.7200,
+        "address": "12 Beach Road, Nyali",
+        "city": "Mombasa",
+        "latitude": -4.0330,
+        "longitude": 39.7200,
         "category": "Hotels",
-        "is_premier": False, "is_halal_certified": True,
+        "is_premier": False,
+        "is_halal_certified": True,
         "operating_hours": {"daily": "00:00-24:00"},
         "logo_url": "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=200&q=80",
         "cover_image_url": "https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?auto=format&fit=crop&w=1000&q=80",
     },
     {
-        "user_index": 13, "type": "business", "status": "approved",
+        "user_index": 13,
+        "type": "business",
+        "status": "approved",
         "name": "Layali Restaurant & Cafe",
         "slug": "layali-restaurant-cafe",
         "description": "A cozy halal restaurant and cafe serving Middle Eastern cuisine, fresh pastries, and specialty coffees. Popular for family dinners, business meetings, and social gatherings.",
-        "email": "hello@layali.co.ke", "phone": "+254711100008",
+        "email": "hello@layali.co.ke",
+        "phone": "+254711100008",
         "website": "https://layali.co.ke",
-        "address": "34 Kimathi Street", "city": "Nairobi",
-        "latitude": -1.2840, "longitude": 36.8210,
+        "address": "34 Kimathi Street",
+        "city": "Nairobi",
+        "latitude": -1.2840,
+        "longitude": 36.8210,
         "category": "Halal Restaurants",
-        "is_premier": False, "is_halal_certified": True,
+        "is_premier": False,
+        "is_halal_certified": True,
         "operating_hours": {"mon-thu": "07:00-23:00", "fri-sun": "07:00-00:00"},
         "logo_url": "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=200&q=80",
         "cover_image_url": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1000&q=80",
     },
     {
-        "user_index": 14, "type": "business", "status": "pending",
+        "user_index": 14,
+        "type": "business",
+        "status": "pending",
         "name": "Al-Barakah Health Clinic",
         "slug": "al-barakah-health-clinic",
         "description": "A community health clinic providing affordable outpatient services including general consultations, maternity care, immunizations, and laboratory services.",
-        "email": "info@albarakahclinic.co.ke", "phone": "+254711100009",
-        "address": "67 Oginga Odinga Road", "city": "Eldoret",
-        "latitude": 0.5143, "longitude": 35.2698,
+        "email": "info@albarakahclinic.co.ke",
+        "phone": "+254711100009",
+        "address": "67 Oginga Odinga Road",
+        "city": "Eldoret",
+        "latitude": 0.5143,
+        "longitude": 35.2698,
         "category": "Clinics",
-        "is_premier": False, "is_halal_certified": False,
+        "is_premier": False,
+        "is_halal_certified": False,
         "operating_hours": {"mon-fri": "07:00-20:00", "sat": "08:00-17:00"},
         "logo_url": "https://images.unsplash.com/photo-1631217868264-e5b90bb7e133?auto=format&fit=crop&w=200&q=80",
         "cover_image_url": "https://images.unsplash.com/photo-1588776814546-1ffcf47267a5?auto=format&fit=crop&w=1000&q=80",
     },
     {
-        "user_index": 15, "type": "business", "status": "approved",
+        "user_index": 15,
+        "type": "business",
+        "status": "approved",
         "name": "Pamoja Community Center",
         "slug": "pamoja-community-center",
         "description": "A multi-purpose community center offering sports facilities, event halls, classrooms, and a library. Hosts community events, youth programs, and educational workshops.",
-        "email": "info@pamojacenter.co.ke", "phone": "+254711100010",
+        "email": "info@pamojacenter.co.ke",
+        "phone": "+254711100010",
         "website": "https://pamojacenter.co.ke",
-        "address": "90 Community Road, Eastlands", "city": "Nairobi",
-        "latitude": -1.2740, "longitude": 36.8500,
+        "address": "90 Community Road, Eastlands",
+        "city": "Nairobi",
+        "latitude": -1.2740,
+        "longitude": 36.8500,
         "category": "IT Services",
-        "is_premier": True, "is_halal_certified": False,
+        "is_premier": True,
+        "is_halal_certified": False,
         "operating_hours": {"mon-sat": "06:00-22:00", "sun": "08:00-20:00"},
         "logo_url": "https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=200&q=80",
         "cover_image_url": "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=1000&q=80",
@@ -405,106 +613,309 @@ ORGANIZATIONS = [
 ]
 
 REVIEWS_DATA = [
-    {"org_index": 1, "user_index": 6, "rating": 5, "comment": "Beautiful mosque with a welcoming community. The imam's sermons are very inspiring. Women's facilities are well maintained."},
-    {"org_index": 1, "user_index": 8, "rating": 4, "comment": "Great atmosphere for prayers. Well organized Friday prayers. Parking can be tight during peak hours."},
-    {"org_index": 1, "user_index": 10, "rating": 5, "comment": "Alhamdulillah, this mosque feels like home. Excellent Quran classes for children."},
-    {"org_index": 3, "user_index": 6, "rating": 5, "comment": "Transparent charity with real impact. I sponsor an orphan through them and receive regular updates."},
-    {"org_index": 3, "user_index": 7, "rating": 4, "comment": "They do great work in the community. The food distribution program during Ramadan was excellent."},
-    {"org_index": 3, "user_index": 12, "rating": 5, "comment": "Very professional team. Their water well projects are transforming communities."},
-    {"org_index": 5, "user_index": 7, "rating": 5, "comment": "Excellent medical care. The staff are professional and compassionate. Clean facilities."},
-    {"org_index": 5, "user_index": 9, "rating": 4, "comment": "Good hospital with modern equipment. Emergency services are prompt. Waiting times could be better."},
-    {"org_index": 5, "user_index": 15, "rating": 5, "comment": "Best maternity care in Nairobi. My wife had a wonderful experience here."},
-    {"org_index": 7, "user_index": 6, "rating": 4, "comment": "Delicious halal food, great service. Their mandazi and chapati are the best in town."},
-    {"org_index": 7, "user_index": 9, "rating": 5, "comment": "Love the family atmosphere. Kids play area is a bonus. The biryani is amazing!"},
-    {"org_index": 7, "user_index": 11, "rating": 4, "comment": "Consistently good food. The staff remembers regular customers. Highly recommended."},
-    {"org_index": 9, "user_index": 8, "rating": 5, "comment": "Great community space. We held my son's graduation party here. Affordable and well equipped."},
-    {"org_index": 9, "user_index": 10, "rating": 4, "comment": "Excellent facilities for community events. The sports programs for youth are fantastic."},
-    {"org_index": 9, "user_index": 14, "rating": 5, "comment": "The library is a hidden gem. My children love the weekend Quran classes here."},
+    {
+        "org_index": 1,
+        "user_index": 6,
+        "rating": 5,
+        "comment": "Beautiful mosque with a welcoming community. The imam's sermons are very inspiring. Women's facilities are well maintained.",
+    },
+    {
+        "org_index": 1,
+        "user_index": 8,
+        "rating": 4,
+        "comment": "Great atmosphere for prayers. Well organized Friday prayers. Parking can be tight during peak hours.",
+    },
+    {
+        "org_index": 1,
+        "user_index": 10,
+        "rating": 5,
+        "comment": "Alhamdulillah, this mosque feels like home. Excellent Quran classes for children.",
+    },
+    {
+        "org_index": 3,
+        "user_index": 6,
+        "rating": 5,
+        "comment": "Transparent charity with real impact. I sponsor an orphan through them and receive regular updates.",
+    },
+    {
+        "org_index": 3,
+        "user_index": 7,
+        "rating": 4,
+        "comment": "They do great work in the community. The food distribution program during Ramadan was excellent.",
+    },
+    {
+        "org_index": 3,
+        "user_index": 12,
+        "rating": 5,
+        "comment": "Very professional team. Their water well projects are transforming communities.",
+    },
+    {
+        "org_index": 5,
+        "user_index": 7,
+        "rating": 5,
+        "comment": "Excellent medical care. The staff are professional and compassionate. Clean facilities.",
+    },
+    {
+        "org_index": 5,
+        "user_index": 9,
+        "rating": 4,
+        "comment": "Good hospital with modern equipment. Emergency services are prompt. Waiting times could be better.",
+    },
+    {
+        "org_index": 5,
+        "user_index": 15,
+        "rating": 5,
+        "comment": "Best maternity care in Nairobi. My wife had a wonderful experience here.",
+    },
+    {
+        "org_index": 7,
+        "user_index": 6,
+        "rating": 4,
+        "comment": "Delicious halal food, great service. Their mandazi and chapati are the best in town.",
+    },
+    {
+        "org_index": 7,
+        "user_index": 9,
+        "rating": 5,
+        "comment": "Love the family atmosphere. Kids play area is a bonus. The biryani is amazing!",
+    },
+    {
+        "org_index": 7,
+        "user_index": 11,
+        "rating": 4,
+        "comment": "Consistently good food. The staff remembers regular customers. Highly recommended.",
+    },
+    {
+        "org_index": 9,
+        "user_index": 8,
+        "rating": 5,
+        "comment": "Great community space. We held my son's graduation party here. Affordable and well equipped.",
+    },
+    {
+        "org_index": 9,
+        "user_index": 10,
+        "rating": 4,
+        "comment": "Excellent facilities for community events. The sports programs for youth are fantastic.",
+    },
+    {
+        "org_index": 9,
+        "user_index": 14,
+        "rating": 5,
+        "comment": "The library is a hidden gem. My children love the weekend Quran classes here.",
+    },
 ]
 
 REPLIES_DATA = [
-    {"review_index": 0, "user_index": 7, "content": "Jazakallahukhair for your kind words! We strive to serve our community better every day."},
-    {"review_index": 3, "user_index": 9, "content": "Thank you for your support! Your sponsorship is changing lives. We'll send you the latest impact report."},
-    {"review_index": 6, "user_index": 11, "content": "Thank you for choosing Al-Shifa. Our team works hard to provide the best care possible."},
-    {"review_index": 9, "user_index": 13, "content": "So glad you enjoyed your meal! Our chefs take great pride in every dish."},
+    {
+        "review_index": 0,
+        "user_index": 7,
+        "content": "Jazakallahukhair for your kind words! We strive to serve our community better every day.",
+    },
+    {
+        "review_index": 3,
+        "user_index": 9,
+        "content": "Thank you for your support! Your sponsorship is changing lives. We'll send you the latest impact report.",
+    },
+    {
+        "review_index": 6,
+        "user_index": 11,
+        "content": "Thank you for choosing Al-Shifa. Our team works hard to provide the best care possible.",
+    },
+    {
+        "review_index": 9,
+        "user_index": 13,
+        "content": "So glad you enjoyed your meal! Our chefs take great pride in every dish.",
+    },
 ]
 
 FAVORITES_MAP = [
-    (6, 1), (6, 3), (6, 5), (7, 1), (7, 3), (8, 5), (8, 7),
-    (9, 3), (9, 9), (10, 3), (10, 5), (11, 5), (11, 7),
-    (12, 1), (12, 9), (13, 7), (13, 9), (14, 5), (14, 7), (15, 9),
+    (6, 1),
+    (6, 3),
+    (6, 5),
+    (7, 1),
+    (7, 3),
+    (8, 5),
+    (8, 7),
+    (9, 3),
+    (9, 9),
+    (10, 3),
+    (10, 5),
+    (11, 5),
+    (11, 7),
+    (12, 1),
+    (12, 9),
+    (13, 7),
+    (13, 9),
+    (14, 5),
+    (14, 7),
+    (15, 9),
 ]
 
 EVENTS_DATA = [
     {
-        "org_index": 5, "title": "Community Health Awareness Workshop",
+        "org_index": 5,
+        "title": "Community Health Awareness Workshop",
         "slug": "community-health-awareness-workshop-2026",
         "description": "Free health screening and awareness workshop covering diabetes, hypertension, and nutrition. Free consultations and medications.",
         "event_date": datetime(2026, 9, 15, tzinfo=UTC),
-        "event_time": "09:00", "venue": "Al-Shifa Medical Center",
-        "latitude": -1.2960, "longitude": 36.8150,
+        "event_time": "09:00",
+        "venue": "Al-Shifa Medical Center",
+        "latitude": -1.2960,
+        "longitude": 36.8150,
         "category": "Health",
     },
     {
-        "org_index": 3, "title": "Ramadan Food Distribution Drive",
+        "org_index": 3,
+        "title": "Ramadan Food Distribution Drive",
         "slug": "ramadan-food-distribution-2026",
         "description": "Annual food distribution drive to support 2000 families during Ramadan. Volunteers needed for packing and distribution.",
         "event_date": datetime(2027, 2, 10, tzinfo=UTC),
-        "event_time": "08:00", "venue": "Rahma Trust Headquarters",
-        "latitude": -1.2810, "longitude": 36.8130,
+        "event_time": "08:00",
+        "venue": "Rahma Trust Headquarters",
+        "latitude": -1.2810,
+        "longitude": 36.8130,
         "category": "Community",
     },
     {
-        "org_index": 9, "title": "Pamoja Family Fun Day",
+        "org_index": 9,
+        "title": "Pamoja Family Fun Day",
         "slug": "pamoja-family-fun-day-2026",
         "description": "A day of family activities including sports tournaments, face painting, bouncy castles, food stalls, and live entertainment.",
         "event_date": datetime(2026, 12, 20, tzinfo=UTC),
-        "event_time": "10:00", "venue": "Pamoja Community Center Grounds",
-        "latitude": -1.2740, "longitude": 36.8500,
+        "event_time": "10:00",
+        "venue": "Pamoja Community Center Grounds",
+        "latitude": -1.2740,
+        "longitude": 36.8500,
         "category": "Community",
     },
 ]
 
 NOTIFICATIONS_DATA = [
-    {"user_index": 0, "type": "account.welcome", "title": "Welcome to Umma Directory",
-     "message": "Your super administrator account has been created. Welcome to the platform!"},
-    {"user_index": 0, "type": "system.info", "title": "Platform Setup Complete",
-     "message": "The development environment has been fully configured with seed data."},
-    {"user_index": 7, "type": "organization.approved", "title": "Organization Approved",
-     "message": "Your organization 'Al-Nur Central Mosque' has been approved and is now live."},
-    {"user_index": 9, "type": "organization.approved", "title": "Organization Approved",
-     "message": "Your organization 'Rahma Trust Foundation' has been approved and is now live."},
-    {"user_index": 11, "type": "organization.approved", "title": "Organization Approved",
-     "message": "Your organization 'Al-Shifa Medical Center' has been approved and is now live."},
-    {"user_index": 13, "type": "organization.approved", "title": "Organization Approved",
-     "message": "Your organization 'Layali Restaurant & Cafe' has been approved and is now live."},
-    {"user_index": 15, "type": "organization.approved", "title": "Organization Approved",
-     "message": "Your organization 'Pamoja Community Center' has been approved and is now live."},
-    {"user_index": 10, "type": "organization.pending", "title": "Application Submitted",
-     "message": "Your organization application for 'Ummah Development Network' has been submitted for review."},
-    {"user_index": 8, "type": "review.received", "title": "New Review",
-     "message": "Your organization 'Al-Hikma Islamic Academy' received a new review."},
-    {"user_index": 13, "type": "review.received", "title": "New Review",
-     "message": "Your organization 'Layali Restaurant & Cafe' received a new review."},
-    {"user_index": 0, "type": "moderator.task", "title": "Pending Approvals",
-     "message": "There are organizations pending your review in the moderation queue."},
+    {
+        "user_index": 0,
+        "type": "account.welcome",
+        "title": "Welcome to Umma Directory",
+        "message": "Your super administrator account has been created. Welcome to the platform!",
+    },
+    {
+        "user_index": 0,
+        "type": "system.info",
+        "title": "Platform Setup Complete",
+        "message": "The development environment has been fully configured with seed data.",
+    },
+    {
+        "user_index": 7,
+        "type": "organization.approved",
+        "title": "Organization Approved",
+        "message": "Your organization 'Al-Nur Central Mosque' has been approved and is now live.",
+    },
+    {
+        "user_index": 9,
+        "type": "organization.approved",
+        "title": "Organization Approved",
+        "message": "Your organization 'Rahma Trust Foundation' has been approved and is now live.",
+    },
+    {
+        "user_index": 11,
+        "type": "organization.approved",
+        "title": "Organization Approved",
+        "message": "Your organization 'Al-Shifa Medical Center' has been approved and is now live.",
+    },
+    {
+        "user_index": 13,
+        "type": "organization.approved",
+        "title": "Organization Approved",
+        "message": "Your organization 'Layali Restaurant & Cafe' has been approved and is now live.",
+    },
+    {
+        "user_index": 15,
+        "type": "organization.approved",
+        "title": "Organization Approved",
+        "message": "Your organization 'Pamoja Community Center' has been approved and is now live.",
+    },
+    {
+        "user_index": 10,
+        "type": "organization.pending",
+        "title": "Application Submitted",
+        "message": "Your organization application for 'Ummah Development Network' has been submitted for review.",
+    },
+    {
+        "user_index": 8,
+        "type": "review.received",
+        "title": "New Review",
+        "message": "Your organization 'Al-Hikma Islamic Academy' received a new review.",
+    },
+    {
+        "user_index": 13,
+        "type": "review.received",
+        "title": "New Review",
+        "message": "Your organization 'Layali Restaurant & Cafe' received a new review.",
+    },
+    {
+        "user_index": 0,
+        "type": "moderator.task",
+        "title": "Pending Approvals",
+        "message": "There are organizations pending your review in the moderation queue.",
+    },
 ]
 
 DONATIONS_DATA = [
-    {"donor_index": 6, "org_index": 3, "amount": 5000, "currency": "KES",
-     "receipt": "DON-2026-001", "anonymous": False},
-    {"donor_index": 7, "org_index": 3, "amount": 10000, "currency": "KES",
-     "receipt": "DON-2026-002", "anonymous": False},
-    {"donor_index": 8, "org_index": 3, "amount": 25000, "currency": "KES",
-     "receipt": "DON-2026-003", "anonymous": True},
-    {"donor_index": 10, "org_index": 3, "amount": 50000, "currency": "KES",
-     "receipt": "DON-2026-004", "anonymous": False},
-    {"donor_index": 12, "org_index": 3, "amount": 2000, "currency": "KES",
-     "receipt": "DON-2026-005", "anonymous": True},
-    {"donor_index": 14, "org_index": 3, "amount": 15000, "currency": "KES",
-     "receipt": "DON-2026-006", "anonymous": False},
-    {"donor_index": 15, "org_index": 3, "amount": 8000, "currency": "KES",
-     "receipt": "DON-2026-007", "anonymous": False},
+    {
+        "donor_index": 6,
+        "org_index": 3,
+        "amount": 5000,
+        "currency": "KES",
+        "receipt": "DON-2026-001",
+        "anonymous": False,
+    },
+    {
+        "donor_index": 7,
+        "org_index": 3,
+        "amount": 10000,
+        "currency": "KES",
+        "receipt": "DON-2026-002",
+        "anonymous": False,
+    },
+    {
+        "donor_index": 8,
+        "org_index": 3,
+        "amount": 25000,
+        "currency": "KES",
+        "receipt": "DON-2026-003",
+        "anonymous": True,
+    },
+    {
+        "donor_index": 10,
+        "org_index": 3,
+        "amount": 50000,
+        "currency": "KES",
+        "receipt": "DON-2026-004",
+        "anonymous": False,
+    },
+    {
+        "donor_index": 12,
+        "org_index": 3,
+        "amount": 2000,
+        "currency": "KES",
+        "receipt": "DON-2026-005",
+        "anonymous": True,
+    },
+    {
+        "donor_index": 14,
+        "org_index": 3,
+        "amount": 15000,
+        "currency": "KES",
+        "receipt": "DON-2026-006",
+        "anonymous": False,
+    },
+    {
+        "donor_index": 15,
+        "org_index": 3,
+        "amount": 8000,
+        "currency": "KES",
+        "receipt": "DON-2026-007",
+        "anonymous": False,
+    },
 ]
 
 ANALYTICS_EVENTS = [
@@ -526,64 +937,157 @@ ANALYTICS_EVENTS = [
 ]
 
 CAMPAIGNS_DATA = [
-    {"org_index": 4, "title": "Feed a Family This Ramadan",
-     "description": "Help us provide food hampers to 2000 vulnerable families during the holy month of Ramadan.",
-     "target": 5000000, "raised": 2150000, "deadline_offset_days": 180},
-    {"org_index": 4, "title": "Build a School Well",
-     "description": "Fund a clean water well for Al-Nur Primary School in Garissa County serving 500 students.",
-     "target": 1200000, "raised": 780000, "deadline_offset_days": 120},
-    {"org_index": 4, "title": "Orphan Sponsorship Program",
-     "description": "Sponsor 50 orphans with school fees, uniforms, and monthly food supplies.",
-     "target": 3000000, "raised": 1650000, "deadline_offset_days": 365},
+    {
+        "org_index": 4,
+        "title": "Feed a Family This Ramadan",
+        "description": "Help us provide food hampers to 2000 vulnerable families during the holy month of Ramadan.",
+        "target": 5000000,
+        "raised": 2150000,
+        "deadline_offset_days": 180,
+    },
+    {
+        "org_index": 4,
+        "title": "Build a School Well",
+        "description": "Fund a clean water well for Al-Nur Primary School in Garissa County serving 500 students.",
+        "target": 1200000,
+        "raised": 780000,
+        "deadline_offset_days": 120,
+    },
+    {
+        "org_index": 4,
+        "title": "Orphan Sponsorship Program",
+        "description": "Sponsor 50 orphans with school fees, uniforms, and monthly food supplies.",
+        "target": 3000000,
+        "raised": 1650000,
+        "deadline_offset_days": 365,
+    },
 ]
 
 POSTS_DATA = [
-    {"org_index": 1, "author_index": 7, "content": "Join us for our weekly Quran study circle every Wednesday after Maghrib prayer. All are welcome!"},
-    {"org_index": 3, "author_index": 9, "content": "We have distributed 500 food hampers this week to families in need across Nairobi. Thank you to all our donors!"},
-    {"org_index": 5, "author_index": 11, "content": "Free malaria screening camp this Saturday at our clinic from 8 AM to 4 PM. No appointment needed."},
-    {"org_index": 9, "author_index": 15, "content": "Registration now open for our youth basketball tournament! Ages 12-18. Sign up at the center reception."},
+    {
+        "org_index": 1,
+        "author_index": 7,
+        "content": "Join us for our weekly Quran study circle every Wednesday after Maghrib prayer. All are welcome!",
+    },
+    {
+        "org_index": 3,
+        "author_index": 9,
+        "content": "We have distributed 500 food hampers this week to families in need across Nairobi. Thank you to all our donors!",
+    },
+    {
+        "org_index": 5,
+        "author_index": 11,
+        "content": "Free malaria screening camp this Saturday at our clinic from 8 AM to 4 PM. No appointment needed.",
+    },
+    {
+        "org_index": 9,
+        "author_index": 15,
+        "content": "Registration now open for our youth basketball tournament! Ages 12-18. Sign up at the center reception.",
+    },
 ]
 
 ADS_DATA = [
-    {"user_index": 0, "type": "banner", "title": "Al-Shifa Medical Center - 24/7 Emergency Services",
-     "placement": "homepage_hero", "status": "approved"},
-    {"user_index": 0, "type": "sidebar", "title": "Rahma Trust - Sponsor an Orphan Today",
-     "placement": "sidebar", "status": "pending"},
-    {"user_index": 0, "type": "banner", "title": "Qasr Al-Salam Hotel - Eid Special Offers",
-     "placement": "homepage_hero", "status": "pending"},
+    {
+        "user_index": 0,
+        "type": "banner",
+        "title": "Al-Shifa Medical Center - 24/7 Emergency Services",
+        "placement": "homepage_hero",
+        "status": "approved",
+    },
+    {
+        "user_index": 0,
+        "type": "sidebar",
+        "title": "Rahma Trust - Sponsor an Orphan Today",
+        "placement": "sidebar",
+        "status": "pending",
+    },
+    {
+        "user_index": 0,
+        "type": "banner",
+        "title": "Qasr Al-Salam Hotel - Eid Special Offers",
+        "placement": "homepage_hero",
+        "status": "pending",
+    },
 ]
 
 VERIFICATION_DOCS = [
     {"org_index": 5, "user_index": 11, "doc_type": "business_license", "status": "approved"},
     {"org_index": 3, "user_index": 9, "doc_type": "charity_registration", "status": "approved"},
     {"org_index": 7, "user_index": 13, "doc_type": "food_handling_cert", "status": "pending"},
-    {"org_index": 9, "user_index": 15, "doc_type": "community_center_license", "status": "rejected"},
+    {
+        "org_index": 9,
+        "user_index": 15,
+        "doc_type": "community_center_license",
+        "status": "rejected",
+    },
 ]
 
 MEDIA_FILES = [
-    {"org_index": 1, "type": "image", "alt": "Mosque interior during prayers",
-     "url": "https://images.unsplash.com/photo-1564121211835-e88c852648ab?auto=format&fit=crop&w=800&q=80"},
-    {"org_index": 3, "type": "image", "alt": "Charity food distribution event",
-     "url": "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&w=800&q=80"},
-    {"org_index": 5, "type": "image", "alt": "Hospital reception area",
-     "url": "https://images.unsplash.com/photo-1587351021759-3772687b7e1f?auto=format&fit=crop&w=800&q=80"},
-    {"org_index": 7, "type": "image", "alt": "Restaurant interior dining area",
-     "url": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80"},
-    {"org_index": 9, "type": "image", "alt": "Community center sports hall",
-     "url": "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=800&q=80"},
-    {"org_index": 5, "type": "image", "alt": "Doctor consulting with patient",
-     "url": "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=800&q=80"},
-    {"org_index": 7, "type": "image", "alt": "Grilled food platter",
-     "url": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80"},
-    {"org_index": 9, "type": "image", "alt": "Community center library",
-     "url": "https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=800&q=80"},
+    {
+        "org_index": 1,
+        "type": "image",
+        "alt": "Mosque interior during prayers",
+        "url": "https://images.unsplash.com/photo-1564121211835-e88c852648ab?auto=format&fit=crop&w=800&q=80",
+    },
+    {
+        "org_index": 3,
+        "type": "image",
+        "alt": "Charity food distribution event",
+        "url": "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&w=800&q=80",
+    },
+    {
+        "org_index": 5,
+        "type": "image",
+        "alt": "Hospital reception area",
+        "url": "https://images.unsplash.com/photo-1587351021759-3772687b7e1f?auto=format&fit=crop&w=800&q=80",
+    },
+    {
+        "org_index": 7,
+        "type": "image",
+        "alt": "Restaurant interior dining area",
+        "url": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80",
+    },
+    {
+        "org_index": 9,
+        "type": "image",
+        "alt": "Community center sports hall",
+        "url": "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=800&q=80",
+    },
+    {
+        "org_index": 5,
+        "type": "image",
+        "alt": "Doctor consulting with patient",
+        "url": "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&w=800&q=80",
+    },
+    {
+        "org_index": 7,
+        "type": "image",
+        "alt": "Grilled food platter",
+        "url": "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80",
+    },
+    {
+        "org_index": 9,
+        "type": "image",
+        "alt": "Community center library",
+        "url": "https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=800&q=80",
+    },
 ]
 
 REPORTS_DATA = [
-    {"user_index": 8, "org_index": 5, "category": "spam", "description": "Suspicious review on this listing.",
-     "resource_type": "review"},
-    {"user_index": 10, "org_index": 7, "category": "incorrect_info",
-     "description": "The opening hours listed are incorrect.", "resource_type": "organization"},
+    {
+        "user_index": 8,
+        "org_index": 5,
+        "category": "spam",
+        "description": "Suspicious review on this listing.",
+        "resource_type": "review",
+    },
+    {
+        "user_index": 10,
+        "org_index": 7,
+        "category": "incorrect_info",
+        "description": "The opening hours listed are incorrect.",
+        "resource_type": "organization",
+    },
 ]
 
 
@@ -611,7 +1115,9 @@ async def seed():
         print("\n[1/10] Creating permissions...")
         permissions = {}
         for codename, name, desc in PERMISSION_DEFINITIONS:
-            result = await db.execute(Permission.__table__.select().where(Permission.codename == codename))
+            result = await db.execute(
+                Permission.__table__.select().where(Permission.codename == codename)
+            )
             perm = result.fetchone()
             if not perm:
                 perm_obj = Permission(codename=codename, name=name, description=desc)
@@ -619,9 +1125,13 @@ async def seed():
                 await db.flush()
                 permissions[codename] = perm_obj
             else:
-                from app.models.base import BaseModelMixin
                 from sqlalchemy.orm import class_mapper
-                result = await db.execute(Permission.__table__.select().where(Permission.codename == codename))
+
+                from app.models.base import BaseModelMixin
+
+                result = await db.execute(
+                    Permission.__table__.select().where(Permission.codename == codename)
+                )
                 row = result.fetchone()
                 dummy = Permission(codename=codename, name=name, description=desc)
                 dummy.id = row.id
@@ -632,10 +1142,13 @@ async def seed():
         # Refresh permission objects with proper ORM instances
         perms = {}
         for codename, _, _ in PERMISSION_DEFINITIONS:
-            result = await db.execute(Permission.__table__.select().where(Permission.codename == codename))
+            result = await db.execute(
+                Permission.__table__.select().where(Permission.codename == codename)
+            )
             row = result.fetchone()
             if row:
                 from sqlalchemy.orm import class_mapper
+
                 p = Permission(codename=codename)
                 p.id = row.id
                 p.codename = row.codename
@@ -655,8 +1168,11 @@ async def seed():
                 await db.flush()
             else:
                 from sqlalchemy import update as sql_update
-                stmt = sql_update(Role.__table__).where(Role.__table__.c.name == name).values(
-                    description=cfg["description"]
+
+                stmt = (
+                    sql_update(Role.__table__)
+                    .where(Role.__table__.c.name == name)
+                    .values(description=cfg["description"])
                 )
                 await db.execute(stmt)
                 result = await db.execute(Role.__table__.select().where(Role.name == name))
@@ -699,8 +1215,11 @@ async def seed():
             existing = result.fetchone()
             if not existing:
                 cat = Category(
-                    name=cat_def["name"], slug=cat_def["slug"],
-                    icon=cat_def.get("icon", ""), is_active=True, sort_order=0,
+                    name=cat_def["name"],
+                    slug=cat_def["slug"],
+                    icon=cat_def.get("icon", ""),
+                    is_active=True,
+                    sort_order=0,
                 )
                 db.add(cat)
                 await db.flush()
@@ -708,9 +1227,12 @@ async def seed():
                 for child_name in cat_def.get("children", []):
                     child_slug = child_name.lower().replace(" ", "-")
                     child = Category(
-                        name=child_name, slug=child_slug,
-                        parent_id=cat.id, icon=cat_def.get("icon", ""),
-                        is_active=True, sort_order=0,
+                        name=child_name,
+                        slug=child_slug,
+                        parent_id=cat.id,
+                        icon=cat_def.get("icon", ""),
+                        is_active=True,
+                        sort_order=0,
                     )
                     db.add(child)
                     await db.flush()
@@ -726,13 +1248,13 @@ async def seed():
                     if child_row:
                         cat_map[child_name] = child_row
         await db.commit()
-        print(f"  Categories ready.")
+        print("  Categories ready.")
 
         # Create Category helper dict with proper ORM objects
         cats = {}
         for key in cat_map:
             row = cat_map[key]
-            if hasattr(row, '_mapping'):
+            if hasattr(row, "_mapping"):
                 c = Category(name=row.name)
                 c.id = row.id
                 cats[key] = c
@@ -774,15 +1296,22 @@ async def seed():
                 db.add(np)
             else:
                 from sqlalchemy import update
-                stmt = update(User.__table__).where(User.__table__.c.email == acct["email"]).values(
-                    role_id=roles[acct["role"]].id,
-                    is_active=True,
-                    is_email_verified=True,
-                    full_name=acct["full_name"],
-                    phone=acct["phone"],
+
+                stmt = (
+                    update(User.__table__)
+                    .where(User.__table__.c.email == acct["email"])
+                    .values(
+                        role_id=roles[acct["role"]].id,
+                        is_active=True,
+                        is_email_verified=True,
+                        full_name=acct["full_name"],
+                        phone=acct["phone"],
+                    )
                 )
                 await db.execute(stmt)
-                result2 = await db.execute(User.__table__.select().where(User.email == acct["email"]))
+                result2 = await db.execute(
+                    User.__table__.select().where(User.email == acct["email"])
+                )
                 user_row = result2.fetchone()
                 u = User(email=acct["email"])
                 u.id = user_row.id
@@ -817,7 +1346,9 @@ async def seed():
             acct = ACCOUNTS[org_data["user_index"]]
             owner = user_map[acct["email"]]
 
-            result = await db.execute(Organization.__table__.select().where(Organization.slug == org_data["slug"]))
+            result = await db.execute(
+                Organization.__table__.select().where(Organization.slug == org_data["slug"])
+            )
             existing = result.fetchone()
             if existing:
                 print(f"  Skipping existing organization: {org_data['name']}")
@@ -901,7 +1432,9 @@ async def seed():
             if org_obj:
                 db.add(org_obj)
                 await db.flush()
-                result2 = await db.execute(Organization.__table__.select().where(Organization.slug == org_data["slug"]))
+                result2 = await db.execute(
+                    Organization.__table__.select().where(Organization.slug == org_data["slug"])
+                )
                 org_row = result2.fetchone()
                 if org_row:
                     o = Organization(name=org_data["name"])
@@ -917,19 +1450,19 @@ async def seed():
 
         org_objects = []
         for org_row in org_list:
-            o = Organization(name=getattr(org_row, 'name', ''))
-            o.id = getattr(org_row, 'id', None)
-            o.slug = getattr(org_row, 'slug', '')
-            o.owner_id = getattr(org_row, 'owner_id', None)
-            o.status = getattr(org_row, 'status', '')
-            o.organization_type = getattr(org_row, 'organization_type', '')
+            o = Organization(name=getattr(org_row, "name", ""))
+            o.id = getattr(org_row, "id", None)
+            o.slug = getattr(org_row, "slug", "")
+            o.owner_id = getattr(org_row, "owner_id", None)
+            o.status = getattr(org_row, "status", "")
+            o.organization_type = getattr(org_row, "organization_type", "")
             org_objects.append(o)
 
         # Step 6: Organization Managers
         print("\n[6/10] Creating organization managers...")
         manager_assignments = [
             (3, 8),  # Charity -> assign User 3 (index 8) as manager
-            (7, 11), # Restaurant -> assign User 6 (index 11) as manager
+            (7, 11),  # Restaurant -> assign User 6 (index 11) as manager
         ]
         for org_idx, user_idx in manager_assignments:
             org = org_objects[org_idx]
@@ -970,7 +1503,7 @@ async def seed():
                 )
             )
             if not existing.fetchone():
-                created = datetime.now(UTC) - timedelta(days=len(REVIEWS_DATA) - i)
+                _created = datetime.now(UTC) - timedelta(days=len(REVIEWS_DATA) - i)
                 review = Review(
                     rating=rv["rating"],
                     comment=rv["comment"],
@@ -984,7 +1517,7 @@ async def seed():
 
         await db.commit()
 
-        for i, rp_data in enumerate(REPLIES_DATA):
+        for _, rp_data in enumerate(REPLIES_DATA):
             if rp_data["review_index"] < len(review_objects):
                 review = review_objects[rp_data["review_index"]]
                 acct = ACCOUNTS[rp_data["user_index"]]
@@ -1007,9 +1540,12 @@ async def seed():
 
         # Update review counts on organizations
         from sqlalchemy import func as sql_func
+
         for org in org_objects:
             count_result = await db.execute(
-                sql_func.count().select().where(
+                sql_func.count()
+                .select()
+                .where(
                     Review.__table__.c.organization_id == org.id,
                     Review.__table__.c.status == "published",
                 )
@@ -1029,7 +1565,9 @@ async def seed():
                 avg_rating = round(total / len(rows), 1)
 
             await db.execute(
-                Organization.__table__.update().where(Organization.__table__.c.id == org.id).values(
+                Organization.__table__.update()
+                .where(Organization.__table__.c.id == org.id)
+                .values(
                     review_count=int(cnt),
                     avg_rating=avg_rating,
                 )
@@ -1132,27 +1670,31 @@ async def seed():
         # Ad Campaigns
         for i, org in enumerate(org_objects[:3]):
             existing = await db.execute(
-                AdCampaign.__table__.select().where(AdCampaign.__table__.c.organization_id == org.id)
+                AdCampaign.__table__.select().where(
+                    AdCampaign.__table__.c.organization_id == org.id
+                )
             )
             if not existing.fetchone():
                 advertiser_id = getattr(org, "user_id", None) or user_map[ACCOUNTS[0]["email"]].id
-                db.add(AdCampaign(
-                    name=f"{org.name} Promo",
-                    campaign_type="featured_listing",
-                    status="active",
-                    organization_id=org.id,
-                    advertiser_id=advertiser_id,
-                    headline=f"Visit {org.name} Today!",
-                    description="Quality services for the community.",
-                    cta_type="visit_profile",
-                    budget_type="total",
-                    budget_amount=5000,
-                    start_date=datetime.now(UTC) - timedelta(days=2),
-                    end_date=datetime.now(UTC) + timedelta(days=28),
-                    impressions=245 + i * 100,
-                    clicks=18 + i * 5,
-                    created_at=datetime.now(UTC) - timedelta(days=2),
-                ))
+                db.add(
+                    AdCampaign(
+                        name=f"{org.name} Promo",
+                        campaign_type="featured_listing",
+                        status="active",
+                        organization_id=org.id,
+                        advertiser_id=advertiser_id,
+                        headline=f"Visit {org.name} Today!",
+                        description="Quality services for the community.",
+                        cta_type="visit_profile",
+                        budget_type="total",
+                        budget_amount=5000,
+                        start_date=datetime.now(UTC) - timedelta(days=2),
+                        end_date=datetime.now(UTC) + timedelta(days=28),
+                        impressions=245 + i * 100,
+                        clicks=18 + i * 5,
+                        created_at=datetime.now(UTC) - timedelta(days=2),
+                    )
+                )
         await db.commit()
 
         # Donations
@@ -1313,14 +1855,22 @@ async def seed():
 
         # CMS: Pages
         cms_pages = [
-            {"slug": "about-us", "title": "About Umma Directory",
-             "content": "<h1>About Umma Directory</h1><p>Umma Directory is the premier platform for discovering verified halal businesses, mosques, charities, and community organizations across East Africa.</p>",
-             "meta_title": "About Us - Umma Directory",
-             "is_published": True, "version": 1},
-            {"slug": "terms-of-service", "title": "Terms of Service",
-             "content": "<h1>Terms of Service</h1><p>By using Umma Directory, you agree to these terms. Please read them carefully.</p>",
-             "meta_title": "Terms of Service - Umma Directory",
-             "is_published": True, "version": 1},
+            {
+                "slug": "about-us",
+                "title": "About Umma Directory",
+                "content": "<h1>About Umma Directory</h1><p>Umma Directory is the premier platform for discovering verified halal businesses, mosques, charities, and community organizations across East Africa.</p>",
+                "meta_title": "About Us - Umma Directory",
+                "is_published": True,
+                "version": 1,
+            },
+            {
+                "slug": "terms-of-service",
+                "title": "Terms of Service",
+                "content": "<h1>Terms of Service</h1><p>By using Umma Directory, you agree to these terms. Please read them carefully.</p>",
+                "meta_title": "Terms of Service - Umma Directory",
+                "is_published": True,
+                "version": 1,
+            },
         ]
         for page_data in cms_pages:
             existing = await db.execute(
@@ -1374,14 +1924,14 @@ async def seed():
         await db.commit()
 
         print("\n=== Seed data creation complete! ===")
-        print(f"  16 user accounts")
-        print(f"  10 organizations")
+        print("  16 user accounts")
+        print("  10 organizations")
         print(f"  {len(REVIEWS_DATA)} reviews")
         print(f"  {len(FAVORITES_MAP)} favorites")
         print(f"  {len(EVENTS_DATA)} events")
         print(f"  {len(NOTIFICATIONS_DATA)} notifications")
         print(f"  {len(ADS_DATA)} advertisements")
-        print(f"  3 ad campaigns")
+        print("  3 ad campaigns")
         print(f"  {len(DONATIONS_DATA)} donations")
         print(f"  {len(CAMPAIGNS_DATA)} charity campaigns")
         print(f"  {len(POSTS_DATA)} posts")
@@ -1389,8 +1939,8 @@ async def seed():
         print(f"  {len(MEDIA_FILES)} media files")
         print(f"  {len(VERIFICATION_DOCS)} verification documents")
         print(f"  {len(REPORTS_DATA)} reports")
-        print(f"  2 CMS pages + 1 banner + 1 blog post")
-        print(f"  3 payment providers")
+        print("  2 CMS pages + 1 banner + 1 blog post")
+        print("  3 payment providers")
 
 
 if __name__ == "__main__":

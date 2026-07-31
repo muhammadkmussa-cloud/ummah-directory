@@ -29,4 +29,3 @@ class MediaFile(BaseModelMixin):
     )
 
     organization: Mapped[Organization | None] = relationship("Organization", back_populates="media")
-

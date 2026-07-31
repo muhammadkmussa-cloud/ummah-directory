@@ -16,7 +16,7 @@ class Mosque(Organization):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), primary_key=True
     )
-    
+
     imam_name: Mapped[str | None] = mapped_column(String(255))
     has_women_facilities: Mapped[bool] = mapped_column(Boolean, default=False)
     has_parking: Mapped[bool] = mapped_column(Boolean, default=False)

@@ -2,15 +2,17 @@
 
 Run: python -m scripts.migrate_ads_to_campaigns
 """
+
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
+
+from sqlalchemy import select
 
 from app.core.database import async_session_factory
 from app.models.ad_campaign import AdCampaign
 from app.models.advertisement import Advertisement
-from sqlalchemy import select
 
 
 async def migrate():
@@ -23,13 +25,11 @@ async def migrate():
             return
 
         print(f"Migrating {len(ads)} advertisements...")
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         created = 0
 
         for ad in ads:
-            existing = await db.execute(
-                select(AdCampaign).where(AdCampaign.legacy_ad_id == ad.id)
-            )
+            existing = await db.execute(select(AdCampaign).where(AdCampaign.legacy_ad_id == ad.id))
             if existing.scalar_one_or_none():
                 print(f"  SKIP: ad {ad.id} already migrated")
                 continue
@@ -47,7 +47,10 @@ async def migrate():
                 description=ad.content,
                 media_url=ad.image_url,
                 destination_url=ad.destination_url,
-                placement_config={"original_placement": ad.placement, "original_ad_type": ad.ad_type},
+                placement_config={
+                    "original_placement": ad.placement,
+                    "original_ad_type": ad.ad_type,
+                },
                 budget_type="total",
                 budget_amount=ad.budget or 0,
                 start_date=ad.start_date or now,

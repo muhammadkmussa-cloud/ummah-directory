@@ -3,12 +3,11 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
-from typing import TYPE_CHECKING
 
 from app.models.base import BaseModelMixin
 from app.models.organization import Organization
@@ -32,8 +31,12 @@ class Charity(Organization):
         "polymorphic_identity": "charity",
     }
 
-    campaigns: Mapped[list[CharityCampaign]] = relationship("CharityCampaign", back_populates="charity", cascade="all, delete-orphan")
-    donations: Mapped[list["Donation"]] = relationship("Donation", back_populates="organization", cascade="all, delete-orphan")
+    campaigns: Mapped[list[CharityCampaign]] = relationship(
+        "CharityCampaign", back_populates="charity", cascade="all, delete-orphan"
+    )
+    donations: Mapped[list[Donation]] = relationship(
+        "Donation", back_populates="organization", cascade="all, delete-orphan"
+    )
 
 
 class CharityCampaign(BaseModelMixin):
@@ -56,7 +59,7 @@ class CharityCampaign(BaseModelMixin):
     )
 
     charity: Mapped[Charity] = relationship("Charity", back_populates="campaigns")
-    donations: Mapped[list["Donation"]] = relationship("Donation", back_populates="campaign")
+    donations: Mapped[list[Donation]] = relationship("Donation", back_populates="campaign")
 
 
 class CharityReport(BaseModelMixin):

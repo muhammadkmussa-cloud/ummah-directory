@@ -70,5 +70,6 @@ class MosqueResponse(BaseModel):
     facilities: dict | None = None
     created_at: datetime | None = None
 
+
 class MosquePrayerTimesUpdate(BaseModel):
     prayer_times: dict

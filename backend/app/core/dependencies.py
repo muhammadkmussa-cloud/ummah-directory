@@ -41,9 +41,9 @@ async def get_current_user(
             detail="Invalid token payload",
         )
     result = await db.execute(
-        select(User).options(
-            selectinload(User.role).selectinload(Role.permissions)
-        ).where(User.id == user_id, User.is_active)
+        select(User)
+        .options(selectinload(User.role).selectinload(Role.permissions))
+        .where(User.id == user_id, User.is_active)
     )
     user = result.scalar_one_or_none()
     if not user:
@@ -70,15 +70,66 @@ async def get_optional_user(
     return result.scalar_one_or_none()
 
 
+async def get_current_user_allow_inactive(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    """Like :func:`get_current_user` but permits inactive (suspended) users.
+
+    Used only by the appeal-submission endpoint so a suspended user can appeal
+    their suspension (workflows.md #28/#29).
+    """
+    payload = decode_token(credentials.credentials)
+    if payload is None or payload.get("type") != "access":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+        )
+    jti = payload.get("jti")
+    if jti and await is_token_blacklisted(jti):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has been revoked",
+        )
+    user_id = payload.get("sub")
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token payload",
+        )
+    result = await db.execute(
+        select(User)
+        .options(selectinload(User.role).selectinload(Role.permissions))
+        .where(User.id == user_id)
+    )
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+        )
+    return user
+
+
 def require_role(role_name: str):
     async def role_checker(user: User = Depends(get_current_user)) -> User:
-        if not user.role or (user.role.name != role_name and user.role.name != "super_admin"):
+        if not user.role or (user.role.name != role_name and not is_super_admin(user)):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Insufficient permissions",
             )
         return user
+
     return role_checker
+
+
+def is_super_admin(user: User | None) -> bool:
+    """True if the user holds the platform ``super_admin`` role.
+
+    Centralizing this avoids the fragile pattern of granting superuser status
+    via a permission whose codename happens to be ``"super_admin"``.
+    """
+    return bool(user and user.role and user.role.name == "super_admin")
 
 
 def require_permission(permission_codename: str):
@@ -87,9 +138,9 @@ def require_permission(permission_codename: str):
         db: AsyncSession = Depends(get_db),
     ) -> User:
         result = await db.execute(
-            select(User).where(User.id == user.id).options(
-                selectinload(User.role).selectinload(Role.permissions)
-            )
+            select(User)
+            .where(User.id == user.id)
+            .options(selectinload(User.role).selectinload(Role.permissions))
         )
         user_with_perms = result.scalar_one_or_none()
         if not user_with_perms or not user_with_perms.role:
@@ -98,12 +149,13 @@ def require_permission(permission_codename: str):
                 detail="User has no role assigned",
             )
         perm_codenames = {p.codename for p in user_with_perms.role.permissions}
-        if permission_codename not in perm_codenames and "super_admin" not in perm_codenames:
+        if permission_codename not in perm_codenames and not is_super_admin(user_with_perms):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Insufficient permissions",
             )
         return user
+
     return permission_checker
 
 
@@ -115,6 +167,7 @@ def require_email_verified():
                 detail="Please verify your email first",
             )
         return user
+
     return check
 
 
@@ -129,9 +182,7 @@ async def require_mfa_if_admin(
         result = await db.execute(select(MFAConfig).where(MFAConfig.user_id == user.id))
         config = result.scalar_one_or_none()
         if not config or not config.is_enabled:
-            any_admin_mfa = await db.execute(
-                select(MFAConfig).where(MFAConfig.is_enabled).limit(1)
-            )
+            any_admin_mfa = await db.execute(select(MFAConfig).where(MFAConfig.is_enabled).limit(1))
             if any_admin_mfa.scalar_one_or_none():
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
@@ -150,6 +201,7 @@ def get_client_info(request: Request | None) -> tuple[str | None, str | None]:
     ua = request.headers.get("User-Agent")
     return ip, ua
 
+
 def require_org_access(required_owner: bool = False):
     async def access_checker(
         org_id: str,
@@ -157,35 +209,48 @@ def require_org_access(required_owner: bool = False):
         db: AsyncSession = Depends(get_db),
     ) -> User:
         import uuid
+
         from app.models.organization import Organization, OrganizationManager
+
         try:
             org_uuid = uuid.UUID(org_id)
         except ValueError:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid organization ID")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid organization ID"
+            ) from None
 
         # Admin bypass
         if user.role and user.role.name in {"super_admin"}:
             return user
-            
+
         org = await db.scalar(select(Organization).where(Organization.id == org_uuid))
         if not org:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found"
+            )
 
         if org.owner_id == user.id:
             return user
-            
+
         if required_owner:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the Primary Owner can perform this action")
-            
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only the Primary Owner can perform this action",
+            )
+
         manager = await db.scalar(
             select(OrganizationManager).where(
                 OrganizationManager.organization_id == org_uuid,
                 OrganizationManager.user_id == user.id,
-                OrganizationManager.is_active == True
+                OrganizationManager.is_active == True,  # noqa: E712
             )
         )
         if manager:
             return user
-            
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions for this organization")
+
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions for this organization",
+        )
+
     return access_checker

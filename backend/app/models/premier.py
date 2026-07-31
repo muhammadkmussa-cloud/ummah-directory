@@ -3,12 +3,11 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Numeric, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
-from typing import TYPE_CHECKING
 
 from app.models.base import BaseModelMixin
 from app.models.organization import Organization
@@ -39,5 +38,5 @@ class PremierSubscription(BaseModelMixin):
     )
 
     organization: Mapped[Organization] = relationship("Organization")
-    user: Mapped["User"] = relationship("User")
-    payment: Mapped["Payment"] = relationship("Payment")
+    user: Mapped[User] = relationship("User")
+    payment: Mapped[Payment] = relationship("Payment")

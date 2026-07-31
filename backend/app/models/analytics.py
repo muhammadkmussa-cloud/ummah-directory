@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import uuid
+from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
-from typing import TYPE_CHECKING
 
 from app.models.base import BaseModelMixin
 from app.models.organization import Organization
@@ -31,5 +30,5 @@ class AnalyticsEvent(BaseModelMixin):
         UUID(as_uuid=True), ForeignKey("organizations.id", ondelete="CASCADE"), nullable=True
     )
 
-    user: Mapped["User"] = relationship("User")
+    user: Mapped[User] = relationship("User")
     organization: Mapped[Organization | None] = relationship("Organization")

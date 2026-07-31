@@ -9,7 +9,11 @@ from app.core.config import settings
 from app.core.retry import with_retry
 from app.payments.base import PaymentEvent, PaymentGateway, PaymentIntent
 
-MPESA_API = "https://sandbox.safaricom.co.ke" if settings.mpesa_environment == "sandbox" else "https://api.safaricom.co.ke"
+MPESA_API = (
+    "https://sandbox.safaricom.co.ke"
+    if settings.mpesa_environment == "sandbox"
+    else "https://api.safaricom.co.ke"
+)
 
 RETRY_EXCEPTIONS = (httpx.RequestError, httpx.TimeoutException)
 

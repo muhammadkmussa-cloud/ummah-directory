@@ -37,7 +37,9 @@ class StripeGateway(PaymentGateway):
         try:
             event = await asyncio.to_thread(
                 stripe.Webhook.construct_event,
-                payload, sig_header, settings.stripe_webhook_secret,
+                payload,
+                sig_header,
+                settings.stripe_webhook_secret,
             )
             if event["type"] == "payment_intent.succeeded":
                 pi = event["data"]["object"]

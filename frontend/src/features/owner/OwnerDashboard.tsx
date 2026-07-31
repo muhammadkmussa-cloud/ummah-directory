@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Building2, Eye, Megaphone, Star, TrendingUp, CheckCircle, Clock, XCircle, BarChart3 } from 'lucide-react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts'
@@ -9,7 +9,10 @@ import OwnerCampaigns from '@/features/ads/OwnerCampaigns'
 
 export default function OwnerDashboard() {
   const navigate = useNavigate()
-  const [tab, setTab] = useState('overview')
+  const [searchParams] = useSearchParams()
+  const requestedTab = searchParams.get('tab')
+  const validTabs = ['overview', 'listings', 'advertising']
+  const [tab, setTab] = useState(validTabs.includes(requestedTab || '') ? requestedTab! : 'overview')
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ['owner', 'dashboard'],

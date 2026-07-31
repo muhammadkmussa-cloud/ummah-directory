@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.notification import Notification, NotificationPreference
 from app.models.user import User
 from app.services.email_service import send_email
+from app.services.push_service import send_to_user
 
 
 async def create_notification(
@@ -28,6 +29,14 @@ async def create_notification(
         select(NotificationPreference).where(NotificationPreference.user_id == user_id)
     )
     prefs = result.scalar_one_or_none()
+
+    if prefs and prefs.push_notifications:
+        # Push channel (workflows.md #25). No-op if Web Push isn't configured.
+        await send_to_user(
+            db,
+            user_id,
+            {"type": type, "title": title, "body": message or "", "data": data or {}},
+        )
 
     if prefs and prefs.email_notifications:
         user_result = await db.execute(select(User).where(User.id == user_id))

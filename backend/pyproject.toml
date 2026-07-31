@@ -29,6 +29,7 @@ dependencies = [
     "pyotp>=2.9",
     "fpdf2>=2.8",
     "argon2-cffi>=23.1",
+    "pywebpush>=2.0",
 ]
 
 [project.optional-dependencies]
@@ -50,16 +51,28 @@ include = ["app*"]
 [tool.ruff]
 target-version = "py313"
 line-length = 100
+extend-exclude = [
+  "alembic/versions",  # historical migrations are immutable records — do not lint/edit
+  "scripts",           # dev-only seed/validation tooling (long data literals)
+]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP", "B", "SIM", "ARG"]
-ignore = ["B008", "F401", "F821"]
+ignore = [
+  "B008",   # FastAPI uses Depends()/Header() in argument defaults (intentional)
+  "F401",   # __init__ re-exports are common in this codebase
+  "F821",
+  "ARG001", # FastAPI/slowapi require dependency-injected args (e.g. `request`) that the framework uses but the body does not
+  "ARG002", # same as ARG001 for methods
+  "E402",   # deliberate lazy module-level imports to avoid circular imports (auth, database, main, conftest)
+]
 
 [tool.mypy]
 python_version = "3.13"
 strict = false
 ignore_missing_imports = true
 disallow_untyped_defs = false
+exclude = ["alembic/versions/"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

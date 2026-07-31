@@ -1,7 +1,7 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select, or_
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -34,9 +34,7 @@ async def list_favorites(
     base_q = select(Favorite).where(Favorite.user_id == user.id)
 
     if q:
-        base_q = base_q.join(Favorite.organization).where(
-            Organization.name.ilike(f"%{q}%")
-        )
+        base_q = base_q.join(Favorite.organization).where(Organization.name.ilike(f"%{q}%"))
 
     total_q = select(func.count()).select_from(base_q.subquery())
     total = (await db.execute(total_q)).scalar() or 0
@@ -50,17 +48,20 @@ async def list_favorites(
     favorites = result.scalars().all()
 
     return FavoriteListResponse(
-        items=[FavoriteResponse(
-            id=str(f.id),
-            organization_id=str(f.organization_id),
-            organization_name=f.organization.name if f.organization else "Unknown",
-            organization_type=f.organization.organization_type if f.organization else "unknown",
-            organization_slug=f.organization.slug if f.organization else "",
-            logo_url=f.organization.logo_url if f.organization else None,
-            cover_image_url=f.organization.cover_image_url if f.organization else None,
-            city=f.organization.city if f.organization else None,
-            created_at=f.created_at,
-        ) for f in favorites],
+        items=[
+            FavoriteResponse(
+                id=str(f.id),
+                organization_id=str(f.organization_id),
+                organization_name=f.organization.name if f.organization else "Unknown",
+                organization_type=f.organization.organization_type if f.organization else "unknown",
+                organization_slug=f.organization.slug if f.organization else "",
+                logo_url=f.organization.logo_url if f.organization else None,
+                cover_image_url=f.organization.cover_image_url if f.organization else None,
+                city=f.organization.city if f.organization else None,
+                created_at=f.created_at,
+            )
+            for f in favorites
+        ],
         total=total,
     )
 
@@ -75,7 +76,7 @@ async def add_favorite(
     try:
         org_uuid = uuid.UUID(body.organization_id)
     except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid organization_id format")
+        raise HTTPException(status_code=400, detail="Invalid organization_id format") from None
 
     org = await db.get(Organization, org_uuid)
     if not org:
@@ -106,7 +107,7 @@ async def remove_favorite(
     try:
         fav_uuid = uuid.UUID(id)
     except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid favorite ID format")
+        raise HTTPException(status_code=400, detail="Invalid favorite ID format") from None
 
     result = await db.execute(
         select(Favorite).where(Favorite.id == fav_uuid, Favorite.user_id == user.id)
@@ -126,44 +127,48 @@ async def feed_favorites(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    favorited_org_ids = select(Favorite.organization_id).where(
-        Favorite.user_id == user.id
-    ).scalar_subquery()
+    favorited_org_ids = (
+        select(Favorite.organization_id).where(Favorite.user_id == user.id).scalar_subquery()
+    )
 
-    base_q = select(OrganizationPost).options(
-        selectinload(OrganizationPost.organization),
-    ).where(
-        OrganizationPost.organization_id.in_(favorited_org_ids),
-        OrganizationPost.status == "published",
+    base_q = (
+        select(OrganizationPost)
+        .options(
+            selectinload(OrganizationPost.organization),
+        )
+        .where(
+            OrganizationPost.organization_id.in_(favorited_org_ids),
+            OrganizationPost.status == "published",
+        )
     )
 
     total_q = select(func.count()).select_from(base_q.subquery())
     total = (await db.execute(total_q)).scalar() or 0
 
     result = await db.execute(
-        base_q
-        .order_by(OrganizationPost.created_at.desc())
-        .offset((page - 1) * size)
-        .limit(size)
+        base_q.order_by(OrganizationPost.created_at.desc()).offset((page - 1) * size).limit(size)
     )
     posts = result.scalars().all()
 
     return FeedFavoritesResponse(
-        items=[FeedPostResponse(
-            id=str(p.id),
-            organization_id=str(p.organization_id),
-            organization_name=p.organization.name if p.organization else "Unknown",
-            organization_type=p.organization.organization_type if p.organization else "unknown",
-            organization_slug=p.organization.slug if p.organization else "",
-            logo_url=p.organization.logo_url if p.organization else None,
-            cover_image_url=p.organization.cover_image_url if p.organization else None,
-            content=p.content,
-            image_url=p.image_url,
-            like_count=p.like_count,
-            is_premier=False,
-            is_verified=p.organization.is_verified if p.organization else False,
-            created_at=p.created_at,
-        ) for p in posts],
+        items=[
+            FeedPostResponse(
+                id=str(p.id),
+                organization_id=str(p.organization_id),
+                organization_name=p.organization.name if p.organization else "Unknown",
+                organization_type=p.organization.organization_type if p.organization else "unknown",
+                organization_slug=p.organization.slug if p.organization else "",
+                logo_url=p.organization.logo_url if p.organization else None,
+                cover_image_url=p.organization.cover_image_url if p.organization else None,
+                content=p.content,
+                image_url=p.image_url,
+                like_count=p.like_count,
+                is_premier=False,
+                is_verified=p.organization.is_verified if p.organization else False,
+                created_at=p.created_at,
+            )
+            for p in posts
+        ],
         total=total,
         page=page,
         size=size,
@@ -173,22 +178,27 @@ async def feed_favorites(
 
 # --- Collections ---
 
+
 @router.get("/collections")
 async def list_collections(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
-        select(FavoriteCollection).where(FavoriteCollection.user_id == user.id)
+        select(FavoriteCollection)
+        .where(FavoriteCollection.user_id == user.id)
         .options(selectinload(FavoriteCollection.favorites))
         .order_by(FavoriteCollection.name.asc())
     )
-    return [{
-        "id": str(c.id),
-        "name": c.name,
-        "count": len(c.favorites),
-        "created_at": c.created_at,
-    } for c in result.scalars().all()]
+    return [
+        {
+            "id": str(c.id),
+            "name": c.name,
+            "count": len(c.favorites),
+            "created_at": c.created_at,
+        }
+        for c in result.scalars().all()
+    ]
 
 
 @router.post("/collections")
@@ -248,7 +258,9 @@ async def move_favorite(
         )
         if not coll_result.scalar_one_or_none():
             raise HTTPException(status_code=404, detail="Collection not found")
-        fav.collection_id = uuid.UUID(collection_id) if isinstance(collection_id, str) else collection_id
+        fav.collection_id = (
+            uuid.UUID(collection_id) if isinstance(collection_id, str) else collection_id
+        )
     else:
         fav.collection_id = None  # Remove from collection
 

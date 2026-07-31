@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import uuid
-from decimal import Decimal
 from datetime import date, datetime
+from decimal import Decimal
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Date, DateTime, Float, ForeignKey, Integer, Numeric, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
-from typing import TYPE_CHECKING
 
 from app.models.base import BaseModelMixin
 
@@ -36,6 +35,4 @@ class AdAnalytics(BaseModelMixin):
 
     campaign: Mapped[AdCampaign] = relationship("AdCampaign", backref="analytics")
 
-    __table_args__ = (
-        UniqueConstraint("campaign_id", "date", name="uq_campaign_date"),
-    )
+    __table_args__ = (UniqueConstraint("campaign_id", "date", name="uq_campaign_date"),)

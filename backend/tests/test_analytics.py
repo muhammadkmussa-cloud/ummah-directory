@@ -4,7 +4,9 @@ from httpx import AsyncClient
 
 @pytest.mark.asyncio
 async def test_track_click_requires_auth(api_client: AsyncClient):
-    resp = await api_client.post("/api/v1/analytics/track/click/00000000-0000-0000-0000-000000000001")
+    resp = await api_client.post(
+        "/api/v1/analytics/track/click/00000000-0000-0000-0000-000000000001"
+    )
     assert resp.status_code == 401
 
 

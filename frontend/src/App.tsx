@@ -52,6 +52,9 @@ import CampaignDetail from '@/features/ads/CampaignDetail'
 import AnalyticsDashboard from '@/features/analytics/AnalyticsDashboard'
 import PrayerTimesPreferences from '@/features/prayer/PrayerTimesPreferences'
 import PaymentReceiptPage from '@/features/payments/PaymentReceiptPage'
+import OwnerDashboard from '@/features/owner/OwnerDashboard'
+import FollowFeed from '@/features/follows/FollowFeed'
+import AppealPage from '@/features/appeals/AppealPage'
 
 
 import { HelmetProvider } from 'react-helmet-async'
@@ -99,35 +102,40 @@ export default function App() {
 
             {/* Donations & Payments */}
             <Route path="/donate" element={<DonationPage />} />
-            <Route path="/donate/:id" element={<PaymentReceiptPage />} />
+            <Route path="/donate/:id" element={<AuthRoute><PaymentReceiptPage /></AuthRoute>} />
 
             {/* Protected User Routes */}
             <Route path="/dashboard" element={<AuthRoute><DashboardPage /></AuthRoute>} />
-            <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/notifications/preferences" element={<NotificationPreferencesPage />} />
-            <Route path="/favorites" element={<FavoritesPage />} />
-            <Route path="/prayer-times/me" element={<PrayerTimesPreferences />} />
+            <Route path="/feed" element={<AuthRoute><FollowFeed /></AuthRoute>} />
+            <Route path="/appeals" element={<AuthRoute><AppealPage /></AuthRoute>} />
+            <Route path="/profile" element={<AuthRoute><ProfilePage /></AuthRoute>} />
+            <Route path="/notifications/preferences" element={<AuthRoute><NotificationPreferencesPage /></AuthRoute>} />
+            <Route path="/favorites" element={<AuthRoute><FavoritesPage /></AuthRoute>} />
+            <Route path="/prayer-times/me" element={<AuthRoute><PrayerTimesPreferences /></AuthRoute>} />
 
 
             {/* Organizations */}
-            <Route path="/my-organizations" element={<MyOrganizations />} />
+            <Route path="/my-organizations" element={<AuthRoute><MyOrganizations /></AuthRoute>} />
             <Route path="/organizations/new" element={<AuthRoute><CreateOrganizationWizard /></AuthRoute>} />
-            <Route path="/my-organizations/:id/staff" element={<StaffManager />} />
-            <Route path="/my-organizations/:slug" element={<OrganizationProfileView />} />
-            <Route path="/my-organizations/:id/manage" element={<BusinessManager />} />
+            <Route path="/my-organizations/:id/staff" element={<AuthRoute><StaffManager /></AuthRoute>} />
+            <Route path="/my-organizations/:slug" element={<AuthRoute><OrganizationProfileView /></AuthRoute>} />
+            <Route path="/my-organizations/:id/manage" element={<AuthRoute><BusinessManager /></AuthRoute>} />
+
+            {/* Owner Dashboard */}
+            <Route path="/owner/dashboard" element={<AuthRoute><OwnerDashboard /></AuthRoute>} />
 
             {/* Organization Management */}
-            <Route path="/owner/businesses/:id/manage" element={<BusinessManager />} />
-            <Route path="/charity/charities/:id/manage" element={<CampaignManager />} />
-            <Route path="/mosque/mosques/:id/manage" element={<PrayerTimeManager />} />
-            <Route path="/owner/education/:id/manage" element={<EducationManager />} />
+            <Route path="/owner/businesses/:id/manage" element={<AuthRoute><BusinessManager /></AuthRoute>} />
+            <Route path="/charity/charities/:id/manage" element={<AuthRoute><CampaignManager /></AuthRoute>} />
+            <Route path="/mosque/mosques/:id/manage" element={<AuthRoute><PrayerTimeManager /></AuthRoute>} />
+            <Route path="/owner/education/:id/manage" element={<AuthRoute><EducationManager /></AuthRoute>} />
 
             {/* Admin */}
-            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/admin" element={<AuthRoute><AdminDashboard /></AuthRoute>} />
 
             {/* Campaign & Analytics */}
-            <Route path="/campaigns/:id" element={<CampaignDetail />} />
-            <Route path="/analytics" element={<AnalyticsDashboard />} />
+            <Route path="/campaigns/:id" element={<AuthRoute><CampaignDetail /></AuthRoute>} />
+            <Route path="/analytics" element={<AuthRoute><AnalyticsDashboard /></AuthRoute>} />
 
             {/* CMS Pages */}
             <Route path="/page/:slug" element={<PageView />} />

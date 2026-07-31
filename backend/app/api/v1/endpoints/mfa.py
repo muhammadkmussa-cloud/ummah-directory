@@ -1,10 +1,11 @@
 import pyotp
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.dependencies import get_client_info, get_current_user
+from app.core.rate_limit import limiter
 from app.core.security import verify_password
 from app.models.mfa import MFAConfig
 from app.models.user import User
@@ -15,7 +16,9 @@ router = APIRouter()
 
 
 @router.post("/setup", response_model=dict)
+@limiter.limit("5/minute")
 async def setup_mfa(
+    request: Request,
     password: str,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -42,7 +45,9 @@ async def setup_mfa(
 
 
 @router.post("/verify", response_model=MessageResponse)
+@limiter.limit("5/minute")
 async def verify_mfa(
+    request: Request,
     password: str,
     code: str,
     user: User = Depends(get_current_user),
@@ -68,7 +73,9 @@ async def verify_mfa(
 
 
 @router.post("/disable", response_model=MessageResponse)
+@limiter.limit("5/minute")
 async def disable_mfa(
+    request: Request,
     password: str,
     code: str,
     user: User = Depends(get_current_user),

@@ -1,3 +1,5 @@
+import contextlib
+import json
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -47,12 +49,16 @@ FRONTEND_URL = "https://ummadirectory.com"
 async def register(req: RegisterRequest, request: Request, db: AsyncSession = Depends(get_db)):
     existing = await db.execute(select(User).where(User.email == req.email))
     if existing.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="Registration failed. Please check your details.")
+        raise HTTPException(
+            status_code=400, detail="Registration failed. Please check your details."
+        )
 
     if req.phone:
         existing_phone = await db.execute(select(User).where(User.phone == req.phone))
         if existing_phone.scalar_one_or_none():
-            raise HTTPException(status_code=400, detail="Registration failed. Please check your details.")
+            raise HTTPException(
+                status_code=400, detail="Registration failed. Please check your details."
+            )
 
     role_result = await db.execute(select(Role).where(Role.name == "registered_user"))
     role = role_result.scalar_one_or_none()
@@ -88,9 +94,9 @@ async def verify_email(req: EmailVerificationRequest, db: AsyncSession = Depends
     try:
         email = serializer.loads(req.token, salt="email-verify", max_age=86400)
     except SignatureExpired:
-        raise HTTPException(status_code=400, detail="Verification link expired")
+        raise HTTPException(status_code=400, detail="Verification link expired") from None
     except BadSignature:
-        raise HTTPException(status_code=400, detail="Invalid verification link")
+        raise HTTPException(status_code=400, detail="Invalid verification link") from None
 
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
@@ -123,6 +129,50 @@ from app.core.cache import get_redis
 MAX_LOGIN_ATTEMPTS = 5
 LOCKOUT_MINUTES = 15
 
+
+def _decode_session_entry(entry) -> dict | str:
+    """Normalize a Redis list entry into a dict (parsed JSON) or its raw string."""
+    if isinstance(entry, bytes):
+        entry = entry.decode("utf-8")
+    elif not isinstance(entry, str):
+        entry = str(entry)
+    try:
+        parsed = json.loads(entry)
+    except (json.JSONDecodeError, TypeError):
+        return entry
+    return parsed if isinstance(parsed, dict) else entry
+
+
+async def _get_active_session_jtis(redis, sessions_key: str) -> set[str]:
+    """Return the set of refresh-token JTIs currently tracked as active sessions."""
+    jtis: set[str] = set()
+    for entry in await redis.lrange(sessions_key, 0, -1):
+        decoded = _decode_session_entry(entry)
+        if isinstance(decoded, dict):
+            jti_value = decoded.get("jti")
+            if isinstance(jti_value, str):
+                jtis.add(jti_value)
+        elif isinstance(decoded, str):
+            jtis.add(decoded)  # legacy entries stored as a bare jti
+    return jtis
+
+
+async def _remove_session_by_jti(redis, sessions_key: str, jti: str) -> None:
+    """Remove the active-session list entry matching ``jti`` (if present)."""
+    for entry in await redis.lrange(sessions_key, 0, -1):
+        entry_str = (
+            entry
+            if isinstance(entry, str)
+            else (entry.decode("utf-8") if isinstance(entry, bytes) else str(entry))
+        )
+        decoded = _decode_session_entry(entry)
+        matches = (isinstance(decoded, dict) and decoded.get("jti") == jti) or (
+            isinstance(decoded, str) and decoded == jti
+        )
+        if matches:
+            await redis.lrem(sessions_key, 0, entry_str)
+
+
 @router.post("/login", response_model=TokenResponse)
 @limiter.limit("10/minute")
 async def login(req: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)):
@@ -136,7 +186,10 @@ async def login(req: LoginRequest, request: Request, db: AsyncSession = Depends(
         if await redis.get(lockout_key):
             raise HTTPException(
                 status_code=429,
-                detail=f"Account locked due to multiple failed login attempts. Try again in {LOCKOUT_MINUTES} minutes."
+                detail=(
+                    f"Account locked due to multiple failed login attempts. "
+                    f"Try again in {LOCKOUT_MINUTES} minutes."
+                ),
             )
     except HTTPException:
         raise
@@ -144,9 +197,9 @@ async def login(req: LoginRequest, request: Request, db: AsyncSession = Depends(
         redis = None
 
     result = await db.execute(
-        select(User).options(
-            selectinload(User.role).selectinload(Role.permissions)
-        ).where(User.email == req.email)
+        select(User)
+        .options(selectinload(User.role).selectinload(Role.permissions))
+        .where(User.email == req.email)
     )
     user = result.scalar_one_or_none()
 
@@ -163,18 +216,24 @@ async def login(req: LoginRequest, request: Request, db: AsyncSession = Depends(
             except Exception:
                 pass
 
-        await log_action(db, None, "user.login_failed", "user", req.email,
-                         ip_address=ip, user_agent=ua, outcome="failure")
+        await log_action(
+            db,
+            None,
+            "user.login_failed",
+            "user",
+            req.email,
+            ip_address=ip,
+            user_agent=ua,
+            outcome="failure",
+        )
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     if not user.is_active:
         raise HTTPException(status_code=401, detail="Account is inactive")
 
     if redis:
-        try:
+        with contextlib.suppress(Exception):
             await redis.delete(attempts_key)
-        except Exception:
-            pass
 
     access_token = create_access_token({"sub": str(user.id)})
     refresh_token = create_refresh_token({"sub": str(user.id)})
@@ -189,7 +248,6 @@ async def login(req: LoginRequest, request: Request, db: AsyncSession = Depends(
                 "user_agent": ua or "unknown",
                 "logged_in_at": datetime.now(UTC).isoformat(),
             }
-            import json
             await redis.lpush(sessions_key, json.dumps(session_data))
             await redis.ltrim(sessions_key, 0, 4)
         except Exception:
@@ -228,29 +286,33 @@ async def refresh_token(req: RefreshRequest, request: Request, db: AsyncSession 
 
     jti = payload.get("jti")
     user_id = payload.get("sub")
+    ip, ua = get_client_info(request)
     if jti:
         from app.services.token_service import is_token_blacklisted
+
         if await is_token_blacklisted(jti):
             raise HTTPException(status_code=401, detail="Token has been revoked")
 
         if user_id:
             try:
                 from app.core.cache import get_redis
+
                 r_cli = await get_redis()
                 sessions_key = f"active_sessions:{user_id}"
-                valid_sessions = await r_cli.lrange(sessions_key, 0, -1)
-                valid_sessions_decoded = [s if isinstance(s, str) else s.decode("utf-8") for s in valid_sessions]
-                if valid_sessions_decoded and jti not in valid_sessions_decoded:
-                    raise HTTPException(status_code=401, detail="Session revoked due to concurrent login limit")
+                active_jtis = await _get_active_session_jtis(r_cli, sessions_key)
+                if active_jtis and jti not in active_jtis:
+                    raise HTTPException(
+                        status_code=401, detail="Session revoked due to concurrent login limit"
+                    )
             except HTTPException:
                 raise
             except Exception:
                 pass
 
     result = await db.execute(
-        select(User).options(
-            selectinload(User.role).selectinload(Role.permissions)
-        ).where(User.id == user_id, User.is_active)
+        select(User)
+        .options(selectinload(User.role).selectinload(Role.permissions))
+        .where(User.id == user_id, User.is_active)
     )
     user = result.scalar_one_or_none()
     if not user:
@@ -260,6 +322,7 @@ async def refresh_token(req: RefreshRequest, request: Request, db: AsyncSession 
     jti = payload.get("jti")
     if exp and isinstance(jti, str):
         from datetime import UTC, datetime
+
         remaining = datetime.fromtimestamp(exp, tz=UTC) - datetime.now(UTC)
         if remaining > timedelta(0):
             await blacklist_token(jti, remaining)
@@ -271,16 +334,25 @@ async def refresh_token(req: RefreshRequest, request: Request, db: AsyncSession 
     if new_payload and "jti" in new_payload and jti:
         try:
             from app.core.cache import get_redis
+
             r_cli = await get_redis()
             sessions_key = f"active_sessions:{user.id}"
-            await r_cli.lrem(sessions_key, 0, jti)
-            await r_cli.lpush(sessions_key, new_payload["jti"])
+            # Rotate the session: drop the old jti entry, then record the new one.
+            await _remove_session_by_jti(r_cli, sessions_key, jti)
+            new_session = {
+                "jti": new_payload["jti"],
+                "ip": ip or "unknown",
+                "user_agent": ua or "unknown",
+                "logged_in_at": datetime.now(UTC).isoformat(),
+            }
+            await r_cli.lpush(sessions_key, json.dumps(new_session))
             await r_cli.ltrim(sessions_key, 0, 4)
         except Exception:
             pass
 
-    ip, ua = get_client_info(request)
-    await log_action(db, user.id, "user.refresh", "user", str(user.id), ip_address=ip, user_agent=ua)
+    await log_action(
+        db, user.id, "user.refresh", "user", str(user.id), ip_address=ip, user_agent=ua
+    )
 
     return TokenResponse(
         access_token=access_token,
@@ -317,6 +389,7 @@ async def logout(
             exp = payload.get("exp")
             if exp:
                 from datetime import UTC, datetime
+
                 remaining = datetime.fromtimestamp(exp, tz=UTC) - datetime.now(UTC)
                 if remaining > timedelta(0):
                     await blacklist_token(payload["jti"], remaining)
@@ -325,19 +398,10 @@ async def logout(
                 if user_id:
                     try:
                         from app.core.cache import get_redis
+
                         r_cli = await get_redis()
                         sessions_key = f"active_sessions:{user_id}"
-                        import json
-                        sessions = await r_cli.lrange(sessions_key, 0, -1)
-                        for s in sessions:
-                            s_str = s.decode("utf-8") if isinstance(s, bytes) else str(s)
-                            try:
-                                data = json.loads(s_str)
-                                if data.get("jti") == payload.get("jti"):
-                                    await r_cli.lrem(sessions_key, 0, s_str)
-                                    break
-                            except (json.JSONDecodeError, TypeError):
-                                await r_cli.lrem(sessions_key, 0, s_str)
+                        await _remove_session_by_jti(r_cli, sessions_key, payload.get("jti", ""))
                     except Exception:
                         pass
 
@@ -348,7 +412,9 @@ async def logout(
 
 @router.post("/forgot-password", response_model=MessageResponse)
 @limiter.limit("3/minute")
-async def forgot_password(req: ForgotPasswordRequest, request: Request, db: AsyncSession = Depends(get_db)):
+async def forgot_password(
+    req: ForgotPasswordRequest, request: Request, db: AsyncSession = Depends(get_db)
+):
     result = await db.execute(select(User).where(User.email == req.email))
     user = result.scalar_one_or_none()
     if not user:
@@ -363,16 +429,18 @@ async def forgot_password(req: ForgotPasswordRequest, request: Request, db: Asyn
 
 @router.post("/reset-password", response_model=MessageResponse)
 @limiter.limit("5/minute")
-async def reset_password(req: ResetPasswordRequest, request: Request, db: AsyncSession = Depends(get_db)):
+async def reset_password(
+    req: ResetPasswordRequest, request: Request, db: AsyncSession = Depends(get_db)
+):
     try:
         data = serializer.loads(req.token, salt="password-reset", max_age=3600)
         if not isinstance(data, dict) or "email" not in data:
             raise BadSignature("Invalid token format")
         email = data["email"]
     except SignatureExpired:
-        raise HTTPException(status_code=400, detail="Reset link expired")
+        raise HTTPException(status_code=400, detail="Reset link expired") from None
     except BadSignature:
-        raise HTTPException(status_code=400, detail="Invalid reset link")
+        raise HTTPException(status_code=400, detail="Invalid reset link") from None
 
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
@@ -381,7 +449,9 @@ async def reset_password(req: ResetPasswordRequest, request: Request, db: AsyncS
 
     user.password_hash = hash_password(req.password)
     ip, ua = get_client_info(request)
-    await log_action(db, user.id, "user.password_reset", "user", str(user.id), ip_address=ip, user_agent=ua)
+    await log_action(
+        db, user.id, "user.password_reset", "user", str(user.id), ip_address=ip, user_agent=ua
+    )
     return {"message": "Password reset successfully"}
 
 
@@ -402,18 +472,23 @@ async def send_phone_verification(
             raise HTTPException(status_code=400, detail="Phone number already in use")
 
     import random
+
     code = "".join(random.choices("0123456789", k=6))
 
     from app.core.cache import get_redis
+
     redis = await get_redis()
     cache_key = f"phone_verify:{user.id}"
     await redis.setex(cache_key, 300, f"{req.phone}:{code}")
 
     message = f"Your Umma Directory verification code is: {code}"
     from app.services.sms_service import send_sms
+
     sent = await send_sms(req.phone, message)
     if not sent:
-        raise HTTPException(status_code=500, detail="Failed to send verification code. Please try again.")
+        raise HTTPException(
+            status_code=500, detail="Failed to send verification code. Please try again."
+        )
 
     return {"message": "Verification code sent"}
 
@@ -430,6 +505,7 @@ async def verify_phone(
         return {"message": "Phone already verified"}
 
     from app.core.cache import get_redis
+
     redis = await get_redis()
     cache_key = f"phone_verify:{user.id}"
     stored = await redis.get(cache_key)

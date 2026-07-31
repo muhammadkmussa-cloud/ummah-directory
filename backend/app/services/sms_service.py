@@ -2,6 +2,7 @@
 SMS sending abstraction layer.
 Supports multiple providers: log (dev), Twilio, Africa's Talking.
 """
+
 import logging
 from abc import ABC, abstractmethod
 
@@ -12,8 +13,7 @@ logger = logging.getLogger("ummah.sms")
 
 class SMSProvider(ABC):
     @abstractmethod
-    async def send(self, to: str, message: str) -> bool:
-        ...
+    async def send(self, to: str, message: str) -> bool: ...
 
 
 class LogSMSProvider(SMSProvider):
@@ -28,6 +28,7 @@ class TwilioSMSProvider(SMSProvider):
     async def send(self, to: str, message: str) -> bool:
         try:
             from twilio.rest import Client
+
             client = Client(settings.twilio_account_sid, settings.twilio_auth_token)
             client.messages.create(
                 body=message,
@@ -44,6 +45,7 @@ class AfricaTalkingSMSProvider(SMSProvider):
     async def send(self, to: str, message: str) -> bool:
         try:
             import africastalking
+
             africastalking.initialize(
                 settings.africastalking_username,
                 settings.africastalking_api_key,

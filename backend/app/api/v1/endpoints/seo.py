@@ -38,7 +38,9 @@ async def sitemap_xml(db: AsyncSession = Depends(get_db)):
         (Charity, "charities"),
         (EducationalInstitution, "education"),
     ]:
-        result = await db.execute(select(model.slug).where(model.status.in_(["approved", "published"])))
+        result = await db.execute(
+            select(model.slug).where(model.status.in_(["approved", "published"]))
+        )
         for slug in result.scalars().all():
             urls.append({"loc": f"https://ummadirectory.com/{prefix}/{slug}", "priority": "0.6"})
 
@@ -49,7 +51,7 @@ async def sitemap_xml(db: AsyncSession = Depends(get_db)):
     xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
     xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
     for url in urls:
-        xml += f'  <url><loc>{url["loc"]}</loc><priority>{url["priority"]}</priority></url>\n'
+        xml += f"  <url><loc>{url['loc']}</loc><priority>{url['priority']}</priority></url>\n"
     xml += "</urlset>"
 
     return Response(content=xml, media_type="application/xml")

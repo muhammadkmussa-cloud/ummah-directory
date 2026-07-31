@@ -21,7 +21,7 @@ class RegisterRequest(BaseModel):
         try:
             email_validator.validate_email(v, test_environment=True)
         except email_validator.EmailNotValidError:
-            raise ValueError("Invalid email address")
+            raise ValueError("Invalid email address") from None
         return v.lower().strip()
 
     @field_validator("password")
@@ -40,7 +40,7 @@ class LoginRequest(BaseModel):
         try:
             email_validator.validate_email(v, test_environment=True)
         except email_validator.EmailNotValidError:
-            raise ValueError("Invalid email address")
+            raise ValueError("Invalid email address") from None
         return v.lower().strip()
 
 

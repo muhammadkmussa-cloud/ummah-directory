@@ -1,18 +1,10 @@
-import json
 from datetime import timedelta
 
-import redis.asyncio as redis
+import structlog
 
-from app.core.config import settings
+from app.core.cache import get_redis
 
-_redis: redis.Redis | None = None
-
-
-async def get_redis() -> redis.Redis:
-    global _redis
-    if _redis is None:
-        _redis = redis.from_url(settings.redis_url, decode_responses=True, socket_connect_timeout=2)
-    return _redis
+logger = structlog.get_logger()
 
 
 async def blacklist_token(jti: str, expires_in: timedelta) -> None:
@@ -20,7 +12,11 @@ async def blacklist_token(jti: str, expires_in: timedelta) -> None:
         r = await get_redis()
         await r.set(f"token_blacklist:{jti}", "revoked", ex=int(expires_in.total_seconds()))
     except Exception:
-        pass
+        # Fail open for availability: if Redis is unavailable we cannot record
+        # the revocation, so the token remains valid until it expires. The short
+        # access-token TTL (default 15 minutes) bounds that exposure. We log the
+        # failure so it can be alerted on rather than failing silently.
+        logger.warning("token.blacklist_failed", jti=jti)
 
 
 async def is_token_blacklisted(jti: str) -> bool:
@@ -28,4 +24,7 @@ async def is_token_blacklisted(jti: str) -> bool:
         r = await get_redis()
         return await r.exists(f"token_blacklist:{jti}") == 1
     except Exception:
+        # Same availability trade-off as blacklist_token: assume not revoked so
+        # a transient Redis outage does not lock out every user.
+        logger.warning("token.blacklist_check_failed", jti=jti)
         return False

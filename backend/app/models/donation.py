@@ -2,12 +2,11 @@ from __future__ import annotations
 
 import uuid
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, ForeignKey, Numeric, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
-from typing import TYPE_CHECKING
 
 from app.models.base import BaseModelMixin
 from app.models.organization import Organization
@@ -42,7 +41,7 @@ class Donation(BaseModelMixin):
         UUID(as_uuid=True), ForeignKey("payments.id"), nullable=True
     )
 
-    donor: Mapped["User"] = relationship("User", back_populates="donations")
+    donor: Mapped[User] = relationship("User", back_populates="donations")
     organization: Mapped[Organization] = relationship("Organization")
-    campaign: Mapped["CharityCampaign"] = relationship("CharityCampaign", back_populates="donations")
-    payment: Mapped["Payment"] = relationship("Payment", back_populates="donation")
+    campaign: Mapped[CharityCampaign] = relationship("CharityCampaign", back_populates="donations")
+    payment: Mapped[Payment] = relationship("Payment", back_populates="donation")

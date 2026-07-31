@@ -12,7 +12,9 @@ class CampaignCreate(BaseModel):
     organization_id: str
     headline: str | None = Field(None, max_length=255)
     description: str | None = None
-    cta_type: str | None = Field(None, pattern=r"^(visit_profile|call_now|whatsapp|book_now|donate|learn_more)$")
+    cta_type: str | None = Field(
+        None, pattern=r"^(visit_profile|call_now|whatsapp|book_now|donate|learn_more)$"
+    )
     media_url: str | None = Field(None, max_length=512)
     destination_url: str | None = Field(None, max_length=512)
     budget_type: str = Field("total", pattern=r"^(daily|total)$")
@@ -28,7 +30,9 @@ class CampaignUpdate(BaseModel):
     name: str | None = Field(None, max_length=255)
     headline: str | None = Field(None, max_length=255)
     description: str | None = None
-    cta_type: str | None = Field(None, pattern=r"^(visit_profile|call_now|whatsapp|book_now|donate|learn_more)$")
+    cta_type: str | None = Field(
+        None, pattern=r"^(visit_profile|call_now|whatsapp|book_now|donate|learn_more)$"
+    )
     media_url: str | None = Field(None, max_length=512)
     destination_url: str | None = Field(None, max_length=512)
     budget_type: str | None = Field(None, pattern=r"^(daily|total)$")
