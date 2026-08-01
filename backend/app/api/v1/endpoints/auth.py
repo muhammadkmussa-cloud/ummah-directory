@@ -41,7 +41,7 @@ from app.services.token_service import blacklist_token
 router = APIRouter()
 serializer = URLSafeTimedSerializer(settings.app_secret_key)
 
-FRONTEND_URL = "https://ummadirectory.com"
+# FRONTEND_URL comes from settings
 
 
 @router.post("/register", response_model=MessageResponse, status_code=201)
@@ -81,7 +81,7 @@ async def register(req: RegisterRequest, request: Request, db: AsyncSession = De
     db.add(prefs)
 
     token = serializer.dumps(user.email, salt="email-verify")
-    verify_link = f"{FRONTEND_URL}/verify-email?token={token}"
+    verify_link = f"{settings.frontend_url}/verify-email?token={token}"
     html = render_email_template("verify_email", link=verify_link)
     await send_email(user.email, "Verify your email", html)
     await log_action(db, user.id, "user.register", "user", str(user.id))
@@ -118,7 +118,7 @@ async def resend_verification(req: ForgotPasswordRequest, db: AsyncSession = Dep
         return {"message": "Email already verified"}
 
     token = serializer.dumps(user.email, salt="email-verify")
-    verify_link = f"{FRONTEND_URL}/verify-email?token={token}"
+    verify_link = f"{settings.frontend_url}/verify-email?token={token}"
     html = render_email_template("verify_email", link=verify_link)
     await send_email(user.email, "Verify your email", html)
     return {"message": "Verification email sent"}
@@ -421,7 +421,7 @@ async def forgot_password(
         return {"message": "If the email exists, a reset link has been sent"}
 
     token = serializer.dumps({"email": user.email, "id": str(user.id)}, salt="password-reset")
-    reset_link = f"{FRONTEND_URL}/reset-password?token={token}"
+    reset_link = f"{settings.frontend_url}/reset-password?token={token}"
     html = render_email_template("password_reset", link=reset_link)
     await send_email(user.email, "Reset your password", html)
     return {"message": "Password reset email sent"}

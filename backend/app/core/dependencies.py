@@ -182,12 +182,10 @@ async def require_mfa_if_admin(
         result = await db.execute(select(MFAConfig).where(MFAConfig.user_id == user.id))
         config = result.scalar_one_or_none()
         if not config or not config.is_enabled:
-            any_admin_mfa = await db.execute(select(MFAConfig).where(MFAConfig.is_enabled).limit(1))
-            if any_admin_mfa.scalar_one_or_none():
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="MFA is required for admin accounts. Please enable MFA first.",
-                )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="MFA is required for admin accounts. Please enable MFA first.",
+            )
     return user
 
 

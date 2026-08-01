@@ -26,7 +26,7 @@ from app.services.token_service import blacklist_token
 
 router = APIRouter()
 serializer = URLSafeTimedSerializer(settings.app_secret_key)
-FRONTEND_URL = "https://ummadirectory.com"
+# FRONTEND_URL comes from settings
 
 
 @router.get("/me", response_model=UserResponse)
@@ -69,7 +69,7 @@ async def update_me(
         user.email = req.email
         user.is_email_verified = False
         token = serializer.dumps(user.email, salt="email-verify")
-        verify_link = f"{FRONTEND_URL}/verify-email?token={token}"
+        verify_link = f"{settings.frontend_url}/verify-email?token={token}"
         html = render_email_template("verify_email", link=verify_link)
         await send_email(user.email, "Verify your new email", html)
     if req.preferred_language is not None:

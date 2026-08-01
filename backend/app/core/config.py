@@ -72,6 +72,7 @@ class Settings(BaseSettings):
     vapid_private_key: str = ""
     vapid_subject_email: str = ""
 
+    frontend_url: str = "http://localhost:5173"
     allowed_hosts: str = "*"
 
     @property
