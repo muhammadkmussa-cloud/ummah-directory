@@ -47,9 +47,7 @@ export default function LandingNavigation() {
           
           {/* Logo */}
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.scrollTo(0, 0)}>
-            <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-emerald-600/20">
-              <Compass className="w-6 h-6" />
-            </div>
+            <img src="/logo.svg" alt="Ummah Directory" className="w-10 h-10" />
             <span className="text-xl font-bold text-surface-900 tracking-tight">ummah Directory</span>
           </div>
 

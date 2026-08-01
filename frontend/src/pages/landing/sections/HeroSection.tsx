@@ -28,7 +28,7 @@ export default function HeroSection() {
             <h1 className="text-5xl md:text-7xl font-extrabold text-surface-900 tracking-tight leading-[1.1] mb-6">
               Connect with your <br className="hidden md:block" />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-emerald-400">
-                local ummahh.
+                local ummah.
               </span>
             </h1>
             

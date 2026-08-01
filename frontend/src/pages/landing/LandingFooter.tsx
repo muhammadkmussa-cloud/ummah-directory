@@ -12,9 +12,7 @@ export default function LandingFooter() {
           
           <div className="lg:col-span-2">
             <div className="flex items-center gap-2 mb-6">
-              <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-emerald-600/20">
-                <Compass className="w-6 h-6" />
-              </div>
+              <img src="/logo.svg" alt="Ummah Directory" className="w-10 h-10" />
               <span className="text-xl font-bold text-white tracking-tight">ummah Directory</span>
             </div>
             <p className="text-surface-400 leading-relaxed mb-8 max-w-sm">

@@ -14,9 +14,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({ children }) => {
         <div className="hidden md:flex flex-col justify-between p-10 bg-gradient-to-br from-emerald-700 via-emerald-800 to-teal-900 text-white relative overflow-hidden">
           <div className="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 bg-emerald-500/20 rounded-full blur-3xl" />
           <div className="relative z-10">
-            <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center mb-6">
-              <ShieldCheck className="w-7 h-7 text-emerald-300" />
-            </div>
+            <img src="/logo.svg" alt="Ummah Directory" className="w-12 h-12 mb-6" />
             <h1 className="text-3xl font-extrabold tracking-tight mb-3">
               Discover, Connect & Grow
             </h1>

@@ -49,9 +49,7 @@ export default function DesktopSidebar() {
     <aside className="hidden md:flex flex-col w-64 lg:w-72 h-screen sticky top-0 border-r border-surface-200 bg-white pt-6 pb-8 px-4 overflow-y-auto z-30">
       {/* Logo */}
       <Link to="/explore" className="flex items-center gap-3 px-4 mb-8">
-        <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center shadow-sm">
-          <Shield className="w-6 h-6 text-white" />
-        </div>
+        <img src="/logo.svg" alt="Ummah Directory" className="w-10 h-10" />
         <div className="flex flex-col">
           <span className="text-xl font-bold tracking-tight text-surface-900 leading-none">ummah</span>
           <span className="text-[10px] font-semibold text-primary-600 uppercase tracking-widest mt-0.5">Directory</span>
