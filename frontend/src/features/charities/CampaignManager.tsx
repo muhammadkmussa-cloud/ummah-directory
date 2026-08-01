@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { ChevronLeft, Target, Plus, Trash2, Users, Heart, Edit2, X, Calendar, PauseCircle, CheckCircle } from 'lucide-react';
 import api from '@/lib/api-client';
 import { Card, Badge, Button, Input } from '@/components/ui';
+import { toast } from 'react-hot-toast';
 import StaffManager from '@/features/organizations/StaffManager';
 import OrganizationEventsTab from '@/features/events/OrganizationEventsTab';
 
@@ -66,7 +67,7 @@ export default function CampaignManager() {
       queryClient.invalidateQueries({ queryKey: ['charity', id, 'campaigns'] });
       setShowCreate(false);
       setFormData({ title: '', description: '', target_amount: 0, currency: 'USD', deadline: '' });
-      alert('Campaign created successfully!');
+      toast.success('Campaign created successfully!');
     },
   });
 
@@ -76,7 +77,7 @@ export default function CampaignManager() {
       queryClient.invalidateQueries({ queryKey: ['charity', id, 'campaigns'] });
       setEditingCampaignId(null);
       setFormData({ title: '', description: '', target_amount: 0, currency: 'USD', deadline: '' });
-      alert('Campaign updated successfully!');
+      toast.success('Campaign updated successfully!');
     },
   });
 
@@ -84,7 +85,7 @@ export default function CampaignManager() {
     mutationFn: (campaignId: number) => api.delete(`/charities/${id}/campaigns/${campaignId}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['charity', id, 'campaigns'] });
-      alert('Campaign deleted.');
+      toast.success('Campaign deleted.');
     },
   });
 

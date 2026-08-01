@@ -51,7 +51,7 @@ export default function DonationPage() {
       metadata: campaignId ? { campaign_id: campaignId } : {},
       onSuccess: (payment_id) => {
         setSuccess('Donation successful! Thank you.')
-        navigate(`/receipt/${payment_id}`)
+        navigate(`/donate/${payment_id}`)
       },
       onCancel: () => {
         setError('Payment was cancelled.')

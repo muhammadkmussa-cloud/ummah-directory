@@ -54,6 +54,9 @@ import PrayerTimesPreferences from '@/features/prayer/PrayerTimesPreferences'
 import PaymentReceiptPage from '@/features/payments/PaymentReceiptPage'
 import OwnerDashboard from '@/features/owner/OwnerDashboard'
 import FollowFeed from '@/features/follows/FollowFeed'
+import BusinessCreatePage from '@/features/businesses/BusinessCreatePage'
+import MosqueDashboard from '@/features/mosques/MosqueDashboard'
+import CharityDashboard from '@/features/charities/CharityDashboard'
 import AppealPage from '@/features/appeals/AppealPage'
 
 
@@ -129,6 +132,13 @@ export default function App() {
             <Route path="/charity/charities/:id/manage" element={<AuthRoute><CampaignManager /></AuthRoute>} />
             <Route path="/mosque/mosques/:id/manage" element={<AuthRoute><PrayerTimeManager /></AuthRoute>} />
             <Route path="/owner/education/:id/manage" element={<AuthRoute><EducationManager /></AuthRoute>} />
+
+            {/* Direct creation pages */}
+            <Route path="/businesses/new" element={<AuthRoute><BusinessCreatePage /></AuthRoute>} />
+
+            {/* Dashboard routes */}
+            <Route path="/mosque/dashboard" element={<AuthRoute><MosqueDashboard /></AuthRoute>} />
+            <Route path="/charity/dashboard" element={<AuthRoute><CharityDashboard /></AuthRoute>} />
 
             {/* Admin */}
             <Route path="/admin" element={<AuthRoute><AdminDashboard /></AuthRoute>} />

@@ -3,12 +3,12 @@ import { Utensils, ShoppingBag, BookOpen, HeartPulse, Building2, Palmtree, Arrow
 import { useNavigate } from 'react-router-dom';
 
 const categories = [
-  { name: 'Halal Dining', icon: Utensils, count: '320+' },
-  { name: 'Retail & Fashion', icon: ShoppingBag, count: '150+' },
-  { name: 'Education', icon: BookOpen, count: '85+' },
-  { name: 'Health & Wellness', icon: HeartPulse, count: '110+' },
-  { name: 'Professional Services', icon: Building2, count: '200+' },
-  { name: 'Travel & Tours', icon: Palmtree, count: '45+' },
+  { name: 'Halal Dining', icon: Utensils, count: '320+', query: 'halal restaurant' },
+  { name: 'Retail & Fashion', icon: ShoppingBag, count: '150+', query: 'retail fashion' },
+  { name: 'Education', icon: BookOpen, count: '85+', query: 'islamic education' },
+  { name: 'Health & Wellness', icon: HeartPulse, count: '110+', query: 'health wellness' },
+  { name: 'Professional Services', icon: Building2, count: '200+', query: 'professional services' },
+  { name: 'Travel & Tours', icon: Palmtree, count: '45+', query: 'halal travel' },
 ];
 
 export default function CategoriesSection() {
@@ -44,7 +44,7 @@ export default function CategoriesSection() {
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true, margin: "-50px" }}
               transition={{ duration: 0.4, delay: idx * 0.05 }}
-              onClick={() => navigate('/explore')}
+              onClick={() => navigate(`/search?q=${encodeURIComponent(category.query)}`)}
               className="group cursor-pointer bg-surface-50 hover:bg-emerald-50 border border-surface-100 hover:border-emerald-200 rounded-2xl p-6 flex items-center gap-5 transition-all"
             >
               <div className="w-12 h-12 rounded-xl bg-white shadow-sm flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform">

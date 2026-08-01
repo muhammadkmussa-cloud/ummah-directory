@@ -177,7 +177,7 @@ export default function HomePage() {
                         <button className="flex-1 py-2 bg-surface-100 hover:bg-surface-200 text-surface-900 rounded-xl text-xs sm:text-sm font-bold transition-colors">
                           View Details
                         </button>
-                        <button className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-bold transition-colors shadow-sm">
+                        <button onClick={(e) => { e.stopPropagation(); navigate(`/businesses/${business.slug}`); }} className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs sm:text-sm font-bold transition-colors shadow-sm">
                           Contact
                         </button>
                       </>

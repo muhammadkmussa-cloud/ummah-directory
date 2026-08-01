@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Search, MapPin, Star, SlidersHorizontal } from 'lucide-react'
+import { Search, MapPin, Star, SlidersHorizontal, X, Check } from 'lucide-react'
 import api from '@/lib/api-client'
 import { Card, Badge, Button, SkeletonList } from '@/components/ui'
 import { useAnalytics } from '@/hooks/useAnalytics'
@@ -14,10 +14,14 @@ export default function BusinessListPage() {
   const [search, setSearch] = useState(searchParams.get('q') || '')
   const { trackSearch } = useAnalytics()
   const [showFilters, setShowFilters] = useState(false)
+  const [city, setCity] = useState('')
+  const [sort, setSort] = useState('newest')
+  const [verifiedOnly, setVerifiedOnly] = useState(false)
+  const [premierOnly, setPremierOnly] = useState(false)
 
   const { data, isLoading } = useQuery({
-    queryKey: ['businesses', { page, search }],
-    queryFn: () => api.get('/businesses', { params: { page, size: 20, search, sort: 'newest' } }).then(r => {
+    queryKey: ['businesses', { page, search, city, sort, verifiedOnly, premierOnly }],
+    queryFn: () => api.get('/businesses', { params: { page, size: 20, search, sort, city: city || undefined, is_verified: verifiedOnly || undefined, is_premier: premierOnly || undefined } }).then(r => {
       if (search && r.data.items) {
         trackSearch(search, r.data.total);
       }
@@ -25,9 +29,18 @@ export default function BusinessListPage() {
     }),
   })
 
+  const clearFilters = () => {
+    setCity('')
+    setSort('newest')
+    setVerifiedOnly(false)
+    setPremierOnly(false)
+  }
+
+  const hasActiveFilters = city || sort !== 'newest' || verifiedOnly || premierOnly
+
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-8 w-full overflow-x-hidden">
-      <div className="flex items-center gap-2 mb-6">
+      <div className="flex items-center gap-2 mb-4">
         <div className="flex-1 min-w-0 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
           <input
@@ -41,10 +54,80 @@ export default function BusinessListPage() {
         <Button variant="outline" onClick={() => navigate('/map?type=business')} className="hidden sm:flex shrink-0">
           <MapPin className="w-4 h-4 mr-2" /> View Map
         </Button>
-        <Button variant="outline" onClick={() => setShowFilters(!showFilters)} className="shrink-0 text-xs sm:text-sm px-3 py-2">
+        <Button variant="outline" onClick={() => setShowFilters(!showFilters)} className={`shrink-0 text-xs sm:text-sm px-3 py-2 relative ${showFilters ? 'bg-primary-50 border-primary-300 text-primary-700' : ''}`}>
           <SlidersHorizontal className="w-4 h-4 mr-1 sm:mr-2" /> Filters
+          {hasActiveFilters && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-primary-600 rounded-full" />}
         </Button>
       </div>
+
+      {/* Filter Panel */}
+      {showFilters && (
+        <div className="mb-6 p-4 bg-white rounded-2xl border border-surface-200 shadow-sm space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-sm text-surface-900">Filter Businesses</h3>
+            <div className="flex items-center gap-2">
+              {hasActiveFilters && (
+                <button onClick={clearFilters} className="text-xs text-surface-500 hover:text-surface-700 flex items-center gap-1">
+                  <X className="w-3 h-3" /> Clear all
+                </button>
+              )}
+              <button onClick={() => setShowFilters(false)} className="p-1 hover:bg-surface-100 rounded-lg">
+                <X className="w-4 h-4 text-surface-400" />
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-surface-600 mb-1.5">City</label>
+              <input
+                type="text"
+                value={city}
+                onChange={(e) => { setCity(e.target.value); setPage(1) }}
+                placeholder="e.g. Nairobi"
+                className="w-full px-3 py-2 text-sm bg-surface-50 border border-surface-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-surface-600 mb-1.5">Sort By</label>
+              <select
+                value={sort}
+                onChange={(e) => { setSort(e.target.value); setPage(1) }}
+                className="w-full px-3 py-2 text-sm bg-surface-50 border border-surface-200 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none"
+              >
+                <option value="newest">Newest First</option>
+                <option value="rating">Highest Rated</option>
+                <option value="name">Name (A-Z)</option>
+                <option value="reviews">Most Reviews</option>
+              </select>
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className="block text-xs font-semibold text-surface-600 mb-1.5">Status</label>
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={verifiedOnly}
+                  onChange={(e) => { setVerifiedOnly(e.target.checked); setPage(1) }}
+                  className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                />
+                <span>Verified only</span>
+              </label>
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className="block text-xs font-semibold text-surface-600 mb-1.5">Listing Type</label>
+              <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={premierOnly}
+                  onChange={(e) => { setPremierOnly(e.target.checked); setPage(1) }}
+                  className="w-4 h-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                />
+                <span>Premier only</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isLoading ? (
         <SkeletonList count={6} />

@@ -1,8 +1,13 @@
 import { Helmet } from 'react-helmet-async';
 import LandingNavigation from './LandingNavigation';
 import HeroSection from './sections/HeroSection';
+import StatisticsSection from './sections/StatisticsSection';
 import FeaturesSection from './sections/FeaturesSection';
+import CategoriesSection from './sections/CategoriesSection';
+import ShowcaseCarousel from './sections/ShowcaseCarousel';
 import TimelineSection from './sections/TimelineSection';
+import TestimonialsSection from './sections/TestimonialsSection';
+import SecuritySection from './sections/SecuritySection';
 import FaqSection from './sections/FaqSection';
 import LandingFooter from './LandingFooter';
 
@@ -20,8 +25,13 @@ export default function LandingPage() {
       
       <main>
         <HeroSection />
+        <StatisticsSection />
         <FeaturesSection />
+        <CategoriesSection />
+        <ShowcaseCarousel />
         <TimelineSection />
+        <TestimonialsSection />
+        <SecuritySection />
         <FaqSection />
       </main>
 
