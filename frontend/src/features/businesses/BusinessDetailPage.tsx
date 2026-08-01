@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { MapPin, Phone, Globe, Clock, ChevronLeft, Star, Share2, Flag, Heart, MessageCircle, Navigation, Info, Edit2 } from 'lucide-react'
+import { MapPin, Phone, Globe, Clock, ChevronLeft, Star, Flag, Heart, MessageCircle, Navigation, Info, Edit2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import api from '@/lib/api-client'
 import { Card, Badge, StarRating, Button, Input } from '@/components/ui'
@@ -9,6 +9,7 @@ import AnimatedTabs from '@/components/ui/AnimatedTabs'
 import Map from '@/components/ui/Map'
 import type { Review } from '@/types'
 import { FavoriteButton } from '@/features/favorites/FavoriteButton'
+import ShareButton from '@/components/ui/ShareButton'
 import { ReviewSheet } from '@/features/reviews/ReviewSheet'
 import { ReportButton } from '@/features/reports/ReportButton'
 import { useAnalytics } from '@/hooks/useAnalytics'
@@ -79,6 +80,7 @@ export default function BusinessDetailPage() {
               </button>
             )}
             <FavoriteButton organizationId={business.id} />
+            <ShareButton title={business.name} />
             <ReportButton resourceType="business" resourceId={business.id} />
           </div>
         </div>

@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import { Flag, X } from 'lucide-react';
 import api from '@/lib/api-client';
 import { Button, Card } from '@/components/ui';
+import { toast } from 'react-hot-toast';
 
 interface Props {
   resourceType: 'business' | 'mosque' | 'charity' | 'education' | 'event' | 'review';
@@ -36,20 +37,20 @@ export function ReportButton({ resourceType, resourceId, className }: Props) {
         }
       }),
     onSuccess: () => {
-      alert('Thank you. Your report has been submitted for review.');
+      toast.success('Thank you. Your report has been submitted for review.');
       setIsOpen(false);
       setCategory('');
       setDescription('');
     },
     onError: (err: any) => {
-      alert(err.response?.data?.detail || 'Failed to submit report. Please try again later.');
+      toast.error(err.response?.data?.detail || 'Failed to submit report. Please try again later.');
     }
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!category) {
-      alert('Please select a reason for reporting.');
+      toast.error('Please select a reason for reporting.');
       return;
     }
     reportMutation.mutate();

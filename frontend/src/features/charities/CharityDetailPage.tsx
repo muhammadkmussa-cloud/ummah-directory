@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { MapPin, Phone, Globe, ChevronLeft, Heart, Target, Share2, Info, Users, Calendar, Edit2 } from 'lucide-react'
+import { MapPin, Phone, Globe, ChevronLeft, Heart, Target, Info, Users, Calendar, Edit2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import api from '@/lib/api-client'
 import { Card, Badge, Button, Modal } from '@/components/ui'
 import AnimatedTabs from '@/components/ui/AnimatedTabs'
 import { formatCurrency } from '@/lib/utils'
 import { FavoriteButton } from '@/features/favorites/FavoriteButton'
+import ShareButton from '@/components/ui/ShareButton'
 import { ReportButton } from '@/features/reports/ReportButton'
 import MediaGallery from '@/components/ui/MediaGallery'
 import OrganizationEditSheet from '@/features/organizations/OrganizationEditSheet'
@@ -79,6 +80,10 @@ export default function CharityDetailPage() {
             )}
             <FavoriteButton 
               organizationId={charity.id} 
+              className="w-10 h-10 bg-white/20 backdrop-blur-md text-white hover:bg-white/30" 
+            />
+            <ShareButton 
+              title={charity.name} 
               className="w-10 h-10 bg-white/20 backdrop-blur-md text-white hover:bg-white/30" 
             />
             <ReportButton 

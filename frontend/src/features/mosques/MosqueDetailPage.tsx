@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { MapPin, Phone, Globe, Clock, ChevronLeft, Share2, Navigation, Info, Users, BookOpen, AlertCircle, Star, Edit2 } from 'lucide-react'
+import { MapPin, Phone, Globe, Clock, ChevronLeft, Navigation, Info, Users, BookOpen, AlertCircle, Star, Edit2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import api from '@/lib/api-client'
 import { Card, Badge, Button } from '@/components/ui'
 import AnimatedTabs from '@/components/ui/AnimatedTabs'
 import Map from '@/components/ui/Map'
 import { FavoriteButton } from '@/features/favorites/FavoriteButton'
+import ShareButton from '@/components/ui/ShareButton'
 import { ReportButton } from '@/features/reports/ReportButton'
 import { PrayerSubscribeButton } from './PrayerSubscribeButton'
 import { ReviewSheet } from '@/features/reviews/ReviewSheet'
@@ -83,6 +84,10 @@ export default function MosqueDetailPage() {
             )}
             <FavoriteButton 
               organizationId={mosque.id} 
+              className="w-10 h-10 bg-white/20 backdrop-blur-md text-white hover:bg-white/30" 
+            />
+            <ShareButton 
+              title={mosque.name} 
               className="w-10 h-10 bg-white/20 backdrop-blur-md text-white hover:bg-white/30" 
             />
             <ReportButton 

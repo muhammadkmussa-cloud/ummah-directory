@@ -58,7 +58,7 @@ export default function FavoritesPage() {
             {search ? 'Try a different search term.' : 'Tap the heart icon on any listing to save it here for quick access.'}
           </p>
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/explore')}
             className="mt-6 px-6 py-2.5 bg-primary-600 text-white rounded-full font-semibold hover:bg-primary-700 transition-colors shadow-sm"
           >
             Explore
@@ -76,9 +76,9 @@ export default function FavoritesPage() {
               subtitle={fav.city || ''}
               image={fav.cover_image_url || 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&q=80&w=800'}
               logo={fav.logo_url}
-              onClick={() => navigate(`/org/${fav.organization_slug}`)}
+              onClick={() => navigate(`/${fav.organization_type}s/${fav.organization_slug}`)}
               actionButtons={
-                <button className="w-full py-2 bg-surface-100 hover:bg-surface-200 text-surface-900 rounded-xl text-sm font-bold transition-colors">
+                <button onClick={() => navigate(`/${fav.organization_type}s/${fav.organization_slug}`)} className="w-full py-2 bg-surface-100 hover:bg-surface-200 text-surface-900 rounded-xl text-sm font-bold transition-colors">
                   View Details
                 </button>
               }

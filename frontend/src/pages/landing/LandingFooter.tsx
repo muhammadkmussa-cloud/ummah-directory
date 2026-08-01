@@ -21,13 +21,13 @@ export default function LandingFooter() {
               The premium directory platform connecting the global Muslim community with verified halal businesses, mosques, and charities.
             </p>
             <div className="flex gap-4">
-              <a href="#" className="w-10 h-10 rounded-full bg-surface-800 border border-surface-700 flex items-center justify-center text-surface-400 hover:text-emerald-400 hover:border-emerald-500/50 transition-colors">
+              <a href="https://x.com" target="_blank" rel="noopener noreferrer" title="Follow us on X" className="w-10 h-10 rounded-full bg-surface-800 border border-surface-700 flex items-center justify-center text-surface-400 hover:text-emerald-400 hover:border-emerald-500/50 transition-colors">
                 <Twitter className="w-5 h-5" />
               </a>
-              <a href="#" className="w-10 h-10 rounded-full bg-surface-800 border border-surface-700 flex items-center justify-center text-surface-400 hover:text-emerald-400 hover:border-emerald-500/50 transition-colors">
+              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" title="Follow us on Instagram" className="w-10 h-10 rounded-full bg-surface-800 border border-surface-700 flex items-center justify-center text-surface-400 hover:text-emerald-400 hover:border-emerald-500/50 transition-colors">
                 <Instagram className="w-5 h-5" />
               </a>
-              <a href="#" className="w-10 h-10 rounded-full bg-surface-800 border border-surface-700 flex items-center justify-center text-surface-400 hover:text-emerald-400 hover:border-emerald-500/50 transition-colors">
+              <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" title="Connect on LinkedIn" className="w-10 h-10 rounded-full bg-surface-800 border border-surface-700 flex items-center justify-center text-surface-400 hover:text-emerald-400 hover:border-emerald-500/50 transition-colors">
                 <Linkedin className="w-5 h-5" />
               </a>
             </div>
@@ -47,18 +47,18 @@ export default function LandingFooter() {
             <h4 className="text-white font-bold mb-6">Organizations</h4>
             <ul className="space-y-4">
               <li><Link to="/register" className="text-surface-400 hover:text-emerald-400 transition-colors">Claim your listing</Link></li>
-              <li><Link to="/pricing" className="text-surface-400 hover:text-emerald-400 transition-colors">Pricing</Link></li>
-              <li><Link to="/resources" className="text-surface-400 hover:text-emerald-400 transition-colors">Resources</Link></li>
-              <li><Link to="/verification" className="text-surface-400 hover:text-emerald-400 transition-colors">Verification Process</Link></li>
+              <li><Link to="/page/pricing" className="text-surface-400 hover:text-emerald-400 transition-colors">Pricing</Link></li>
+              <li><Link to="/page/resources" className="text-surface-400 hover:text-emerald-400 transition-colors">Resources</Link></li>
+              <li><Link to="/page/verification" className="text-surface-400 hover:text-emerald-400 transition-colors">Verification Process</Link></li>
             </ul>
           </div>
 
           <div>
             <h4 className="text-white font-bold mb-6">Company</h4>
             <ul className="space-y-4">
-              <li><Link to="/about" className="text-surface-400 hover:text-emerald-400 transition-colors">About Us</Link></li>
-              <li><Link to="/careers" className="text-surface-400 hover:text-emerald-400 transition-colors">Careers</Link></li>
-              <li><Link to="/contact" className="text-surface-400 hover:text-emerald-400 transition-colors">Contact</Link></li>
+              <li><Link to="/page/about" className="text-surface-400 hover:text-emerald-400 transition-colors">About Us</Link></li>
+              <li><Link to="/page/careers" className="text-surface-400 hover:text-emerald-400 transition-colors">Careers</Link></li>
+              <li><Link to="/page/contact" className="text-surface-400 hover:text-emerald-400 transition-colors">Contact</Link></li>
             </ul>
           </div>
 

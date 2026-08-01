@@ -34,7 +34,7 @@ export default function Footer() {
             <h4 className="text-white font-medium mb-4">For Businesses</h4>
             <div className="space-y-2 text-sm">
               <Link to="/register" className="block hover:text-white">Create Account</Link>
-              <Link to="/businesses/submit" className="block hover:text-white">Add Listing</Link>
+              <Link to="/organizations/new" className="block hover:text-white">Add Listing</Link>
               <Link to="/page/premier" className="block hover:text-white">Premier Listings</Link>
               <Link to="/page/advertise" className="block hover:text-white">Advertise</Link>
             </div>

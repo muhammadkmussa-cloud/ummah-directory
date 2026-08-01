@@ -80,7 +80,7 @@ export default function CategoryDetailPage() {
 
       {/* Category Spotlight */}
       {spotlight && (
-        <Link to={spotlight.destination_url || `/org/${spotlight.organization_slug}`} className="block">
+        <Link to={spotlight.destination_url || `/${spotlight.organization_type || 'business'}s/${spotlight.organization_slug}`} className="block">
           <Card className="p-5 bg-gradient-to-r from-primary-600 to-primary-800 text-white border-none overflow-hidden relative">
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
             <div className="relative z-10 flex items-start gap-4">
