@@ -55,8 +55,8 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
       APP_ENV: production
       APP_DEBUG: "false"
-      ALLOWED_HOSTS: ${ALLOWED_HOSTS}
-      CORS_ORIGINS: https://example.com
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-your-domain.com}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://your-domain.com}
       FRONTEND_URL: ${FRONTEND_URL}
       MAILGUN_API_KEY: ${MAILGUN_API_KEY}
       MAILGUN_DOMAIN: ${MAILGUN_DOMAIN}

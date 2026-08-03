@@ -13,6 +13,16 @@
     @apply bg-surface-50 text-surface-900 antialiased font-sans overscroll-none;
   }
 
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button,
+  a,
+  [role="button"] {
+    touch-action: manipulation;
+  }
+
   /* RTL Support overrides */
   [dir="rtl"] {
     text-align: right;
@@ -90,4 +100,18 @@
 .hide-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* iPhone safe-area bottom padding for fixed bottom surfaces */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Scrollbar-hiding alias matching .hide-scrollbar (used by map type chips) */
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
 }

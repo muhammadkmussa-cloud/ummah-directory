@@ -107,7 +107,7 @@ export default function OrganizationEventsTab({ organizationId, organizationType
                 className="input-field min-h-[100px] resize-none"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="block text-sm font-medium text-gray-700">Event Date & Time</label>
                 <input

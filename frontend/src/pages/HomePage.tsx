@@ -68,7 +68,7 @@ export default function HomePage() {
   return (
     <div className="w-full max-w-2xl mx-auto min-h-screen pb-20 overflow-x-hidden">
       {/* Top Header Mobile */}
-      <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-surface-100 md:hidden flex items-center justify-between px-4 py-3">
+      <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-surface-100 md:hidden flex items-center justify-between px-4 h-14">
         <h1 className="text-xl font-bold text-surface-900 tracking-tight">ummah Directory</h1>
         <div className="flex items-center gap-4">
           <button onClick={() => navigate('/my-organizations')} className="text-surface-900">
@@ -124,7 +124,7 @@ export default function HomePage() {
       </div>
 
       {/* Feed Tabs */}
-      <div className="sticky top-[53px] md:top-0 z-30 bg-white/95 backdrop-blur-md pt-1 mb-4">
+      <div className="sticky top-14 md:top-0 z-30 bg-white/95 backdrop-blur-md pt-1 mb-4">
         <AnimatedTabs 
           tabs={tabs} 
           activeTab={activeTab} 

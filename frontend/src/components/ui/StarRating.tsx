@@ -19,7 +19,7 @@ export default function StarRating({ rating, max = 5, size = 'sm', interactive, 
           disabled={!interactive}
           onClick={() => interactive && onChange?.(i + 1)}
           className={cn(
-            'transition-colors',
+            'p-2 -m-2 touch-manipulation transition-colors',
             interactive ? 'cursor-pointer hover:scale-110' : 'cursor-default'
           )}
         >

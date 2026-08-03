@@ -207,16 +207,16 @@ export default function BusinessManager() {
                     className="input-field min-h-[100px] resize-none"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Input label="Email" type="email" {...register('email')} />
                   <Input label="Phone" type="tel" {...register('phone')} />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Input label="WhatsApp" type="tel" {...register('whatsapp')} />
                   <Input label="Website" type="url" {...register('website')} />
                 </div>
                 <Input label="Address" {...register('address')} />
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Input label="City" {...register('city')} />
                 </div>
                 <div className="pt-4 border-t border-gray-100 flex justify-end">

@@ -5,6 +5,7 @@ from pathlib import PurePosixPath
 import boto3
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from PIL import Image
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -12,6 +13,7 @@ from app.core.database import get_db
 from app.core.dependencies import get_client_info, get_current_user
 from app.core.rate_limit import limiter
 from app.models.media import MediaFile
+from app.models.organization import Organization, OrganizationManager
 from app.models.user import User
 from app.services.audit_service import log_action
 
@@ -124,6 +126,32 @@ async def upload_file(
     if file.content_type not in ALLOWED_TYPES:
         raise HTTPException(status_code=400, detail=f"File type {file.content_type} not allowed")
 
+    organization_id: uuid.UUID | None = None
+    if resource_id and resource_type in {"business", "mosque", "charity", "education"}:
+        try:
+            organization_id = uuid.UUID(resource_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid organization ID") from None
+
+        if not (user.role and user.role.name == "super_admin"):
+            stmt = select(Organization).where(Organization.id == organization_id)
+            result = await db.execute(stmt)
+            org = result.scalar_one_or_none()
+            if not org:
+                raise HTTPException(status_code=404, detail="Organization not found")
+
+            if org.owner_id != user.id:
+                mgr_stmt = select(OrganizationManager).where(
+                    OrganizationManager.organization_id == organization_id,
+                    OrganizationManager.user_id == user.id,
+                )
+                mgr_res = await db.execute(mgr_stmt)
+                if not mgr_res.scalar_one_or_none():
+                    raise HTTPException(
+                        status_code=403,
+                        detail="Not authorized to upload files for this organization"
+                    )
+
     contents = await file.read()
     if not contents:
         raise HTTPException(status_code=400, detail="Empty file")
@@ -153,8 +181,7 @@ async def upload_file(
         thumbnail_url=thumbnail_url,
         file_size=len(contents),
         mime_type=file.content_type,
-        resource_type=resource_type,
-        resource_id=resource_id or user.id,
+        organization_id=organization_id,
         user_id=user.id,
     )
     db.add(media)

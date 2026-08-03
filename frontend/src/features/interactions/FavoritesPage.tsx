@@ -5,7 +5,12 @@ import { Heart, Loader2, Search, X } from 'lucide-react';
 import api from '@/lib/api-client';
 import FeedCard from '@/components/ui/FeedCard';
 
-export default function FavoritesPage() {
+interface FavoritesPageProps {
+  /** Rendered inside the profile section Card (already padded). Standalone route defaults to false. */
+  embedded?: boolean;
+}
+
+export default function FavoritesPage({ embedded = false }: FavoritesPageProps) {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
 
@@ -17,8 +22,14 @@ export default function FavoritesPage() {
 
   const favorites = (data as any)?.items || [];
 
+  // Standalone (Layout `<main>` already supplies min-h-screen + pb-20); embedded sites
+  // inside the profile Card which carries its own p-6, so we only keep a hair of padding.
+  const container = embedded
+    ? 'w-full max-w-2xl mx-auto px-1 sm:px-2 pt-0'
+    : 'w-full max-w-2xl mx-auto pt-4 px-4 sm:px-0';
+
   return (
-    <div className="w-full max-w-2xl mx-auto min-h-screen pb-20 pt-4 px-4 sm:px-0">
+    <div className={container}>
       <div className="mb-6 px-2">
         <h1 className="text-2xl font-bold text-surface-900 flex items-center gap-2">
           <Heart className="w-6 h-6 text-primary-600 fill-primary-600" />
@@ -37,7 +48,7 @@ export default function FavoritesPage() {
           className="w-full pl-12 pr-10 py-2.5 bg-surface-50 border border-surface-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all text-surface-900"
         />
         {search && (
-          <button onClick={() => setSearch('')} className="absolute right-4 top-1/2 -translate-y-1/2">
+          <button onClick={() => setSearch('')} className="absolute right-4 top-1/2 -translate-y-1/2 -m-2 p-2 rounded-lg hover:bg-surface-100 active:bg-surface-200 transition-colors" aria-label="Clear search">
             <X className="w-4 h-4 text-surface-400 hover:text-surface-600" />
           </button>
         )}

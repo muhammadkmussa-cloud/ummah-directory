@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload, with_polymorphic
+from sqlalchemy.orm import selectinload
 
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, require_permission
@@ -45,8 +45,7 @@ async def list_organizations(
     sort: str = "newest",
     db: AsyncSession = Depends(get_db),
 ):
-    org_polymorphic = with_polymorphic(Organization, "*")
-    query = select(org_polymorphic).where(Organization.status == "approved")
+    query = select(Organization).where(Organization.status == "approved")
 
     if organization_type:
         query = query.where(Organization.organization_type == organization_type)
@@ -76,7 +75,22 @@ async def list_organizations(
     # Need total count
     from sqlalchemy import func
 
-    total_q = select(func.count()).select_from(query.subquery())
+    total_q = select(func.count(Organization.id)).where(Organization.status == "approved")
+    if organization_type:
+        total_q = total_q.where(Organization.organization_type == organization_type)
+    if city:
+        total_q = total_q.where(Organization.city.ilike(f"%{city}%"))
+    if country:
+        total_q = total_q.where(Organization.country == country)
+    if verified is not None:
+        total_q = total_q.where(Organization.is_verified == verified)
+    if search:
+        total_q = total_q.where(
+            or_(
+                Organization.name.ilike(f"%{search}%"),
+                Organization.description.ilike(f"%{search}%"),
+            )
+        )
     total_result = await db.execute(total_q)
     total = total_result.scalar() or 0
 
@@ -98,8 +112,7 @@ async def get_organization(
     slug: str,
     db: AsyncSession = Depends(get_db),
 ):
-    org_polymorphic = with_polymorphic(Organization, "*")
-    result = await db.execute(select(org_polymorphic).where(Organization.slug == slug))
+    result = await db.execute(select(Organization).where(Organization.slug == slug))
     org = result.scalar_one_or_none()
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found")

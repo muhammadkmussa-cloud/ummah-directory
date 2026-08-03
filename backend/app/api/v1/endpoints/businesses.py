@@ -499,8 +499,7 @@ async def upload_verification_document(
     media = MediaFile(
         file_type="document",
         file_url=file_url,
-        resource_type="verification",
-        resource_id=id,
+        organization_id=uuid.UUID(id) if isinstance(id, str) else id,
         user_id=user.id,
     )
     db.add(media)

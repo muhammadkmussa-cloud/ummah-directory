@@ -192,13 +192,13 @@ export default function PrayerTimeManager() {
                     className="input-field min-h-[100px] resize-none"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Input label="Email" type="email" {...register('email')} />
                   <Input label="Phone" type="tel" {...register('phone')} />
                 </div>
                 <Input label="Website" type="url" {...register('website')} />
                 <Input label="Address" {...register('address')} />
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Input label="City" {...register('city')} />
                   <Input label="Country" {...register('country')} />
                 </div>
@@ -287,7 +287,7 @@ export default function PrayerTimeManager() {
             <h2 className="text-lg font-bold">Update Prayer Times</h2>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {['fajr', 'dhuhr', 'asr', 'maghrib', 'isha', 'jummahh'].map((prayer) => (
               <div key={prayer}>
                 <label className="block text-sm font-medium mb-1 capitalize text-surface-700">{prayer}</label>

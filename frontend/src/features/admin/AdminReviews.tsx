@@ -39,7 +39,7 @@ export default function AdminReviews() {
         )}
         
         {reviews?.map((review: any) => (
-          <div key={review.id} className="p-6 flex items-start justify-between hover:bg-surface-50/50 transition-colors">
+          <div key={review.id} className="p-6 flex items-start justify-between gap-3 flex-wrap hover:bg-surface-50/50 transition-colors">
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <div className="flex items-center gap-1 text-yellow-500">
@@ -56,7 +56,7 @@ export default function AdminReviews() {
                 "{review.comment}"
               </p>
             </div>
-            <div className="flex items-center gap-2 ml-4">
+            <div className="flex items-center gap-3 ml-4 flex-wrap">
               {review.status !== 'removed' ? (
                 <Button 
                   size="sm" 

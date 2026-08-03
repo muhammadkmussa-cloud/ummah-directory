@@ -140,7 +140,7 @@ async def create_institution(
         has_girls_section=req.has_girls_section,
         has_boarding=req.has_boarding,
         has_quran_program=req.has_quran_program,
-        primary_admin_id=user.id,
+        owner_id=user.id,
         status="pending",
     )
     db.add(inst)

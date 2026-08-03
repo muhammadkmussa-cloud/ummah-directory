@@ -3,6 +3,7 @@ dist/
 build/
 .env
 .env.local
+.env.test
 *.pyc
 __pycache__/
 .venv/
@@ -27,3 +28,5 @@ celerybeat-schedule.*
 
 # Internal agent scaffolding / scratch (not part of the app)
 .agents/
+celerybeat-schedule-shm
+celerybeat-schedule-wal

@@ -129,9 +129,9 @@ function LoginHistory() {
       {data?.items?.length ? (
         <div className="space-y-2 max-h-60 overflow-y-auto">
           {data.items.map((entry: any) => (
-            <div key={entry.id} className="text-xs text-gray-500 flex justify-between border-b border-gray-50 pb-1.5">
-              <span>{entry.ip_address || 'Unknown IP'}</span>
-              <span>{new Date(entry.created_at).toLocaleString()}</span>
+            <div key={entry.id} className="text-xs text-gray-500 flex justify-between gap-3 border-b border-gray-50 pb-1.5">
+              <span className="min-w-0 break-words">{entry.ip_address || 'Unknown IP'}</span>
+              <span className="text-right shrink-0">{new Date(entry.created_at).toLocaleString()}</span>
             </div>
           ))}
         </div>
@@ -159,7 +159,7 @@ function ActiveSessions() {
   if (isLoading) return null
   return (
     <Card className="p-6 mt-6">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
         <h3 className="font-semibold text-gray-900">Active Sessions</h3>
         <Button variant="outline" size="sm" onClick={() => logoutAll.mutate()} loading={logoutAll.isPending}>
           Log Out All Others
@@ -168,9 +168,9 @@ function ActiveSessions() {
       {data?.sessions?.length ? (
         <div className="space-y-2">
           {data.sessions.map((s: any, i: number) => (
-            <div key={i} className="text-xs text-gray-500 flex justify-between border-b border-gray-50 pb-1.5">
-              <span>{s.ip_address || 'Unknown'} · {s.user_agent?.substring(0, 40) || 'Unknown'}</span>
-              <span>{s.logged_in_at ? new Date(s.logged_in_at).toLocaleString() : ''}</span>
+            <div key={i} className="text-xs text-gray-500 flex justify-between gap-3 border-b border-gray-50 pb-1.5">
+              <span className="min-w-0 break-words">{s.ip_address || 'Unknown'} · {s.user_agent?.substring(0, 40) || 'Unknown'}</span>
+              <span className="text-right shrink-0">{s.logged_in_at ? new Date(s.logged_in_at).toLocaleString() : ''}</span>
             </div>
           ))}
         </div>

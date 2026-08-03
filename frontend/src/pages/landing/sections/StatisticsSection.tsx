@@ -44,7 +44,7 @@ export default function StatisticsSection() {
   return (
     <section className="py-20 bg-white border-y border-surface-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-12 md:gap-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
           <Counter from={0} to={12500} label="Verified Businesses" suffix="+" />
           <Counter from={0} to={840} label="Local Mosques" suffix="+" />
           <Counter from={0} to={2.5} label="Donations Raised" suffix="M+" />

@@ -13,7 +13,8 @@ async def test_create_payment_intent_requires_auth(api_client: AsyncClient):
 @pytest.mark.asyncio
 async def test_create_payment_intent_invalid_gateway(api_client: AsyncClient, auth_headers: dict):
     resp = await api_client.post(
-        "/api/v1/payments/create-intent?gateway=unknown&amount=100&currency=KES",
+        "/api/v1/payments/create-intent",
+        json={"gateway": "unknown", "amount": 100, "currency": "KES"},
         headers=auth_headers,
     )
     assert resp.status_code == 400

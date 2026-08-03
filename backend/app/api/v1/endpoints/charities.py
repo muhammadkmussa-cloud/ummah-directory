@@ -131,7 +131,7 @@ async def create_charity(
         address=req.address,
         city=req.city,
         country=req.country or "Kenya",
-        primary_admin_id=user.id,
+        owner_id=user.id,
         status="pending",
     )
     db.add(charity)

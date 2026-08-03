@@ -1,4 +1,5 @@
 import os
+import uuid
 
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
@@ -18,6 +19,13 @@ def compile_jsonb_sqlite(type_, compiler, **kw):
 
 import app.core.database as db_module
 from app.core.config import settings
+
+# Disable rate limiter for testing to prevent 429 errors
+from app.core.rate_limit import limiter
+
+limiter.enabled = False
+settings.app_env = "test"
+
 from app.main import app
 from app.models import *  # noqa: F401, F403
 
@@ -54,25 +62,69 @@ if USE_SQLITE:
     sync_engine = create_engine(sync_db_url, poolclass=NullPool)
 else:
     sync_db_url = settings.database_url.replace("+asyncpg", "")
-    sync_engine = create_engine(sync_db_url, pool_pre_ping=True)
+    db_module.engine = create_async_engine(settings.database_url, poolclass=NullPool)
+    db_module.async_session_factory = async_sessionmaker(
+        db_module.engine, class_=AsyncSession, expire_on_commit=False
+    )
+    sync_engine = create_engine(sync_db_url, poolclass=NullPool)
 
 
 @pytest_asyncio.fixture(scope="session", autouse=True)
 async def setup_db():
+    if not USE_SQLITE:
+        db_name = sync_db_url.rsplit("/", 1)[-1]
+        assert "test" in db_name.lower(), (
+            f"Refusing to run tests against non-test database: {db_name}"
+        )
     with sync_engine.begin() as conn:
         db_module.Base.metadata.drop_all(conn, checkfirst=True)
         db_module.Base.metadata.create_all(conn, checkfirst=False)
+
+        # Seed test roles and permissions
+        from scripts.seed_dev_data import PERMISSION_DEFINITIONS, ROLES_CONFIG
+
+        role_ids = {}
+        for role_name, config in ROLES_CONFIG.items():
+            r_id = str(uuid.uuid4())
+            role_ids[role_name] = r_id
+            conn.execute(
+                text(
+                    "INSERT INTO roles (id, name, description) VALUES (:id, :name, :desc)"
+                ),
+                {"id": r_id, "name": role_name, "desc": config.get("description", "")},
+            )
+
+        for codename, name, desc in PERMISSION_DEFINITIONS:
+            p_id = str(uuid.uuid4())
+            conn.execute(
+                text(
+                    "INSERT INTO permissions (id, codename, name, description) "
+                    "VALUES (:id, :codename, :name, :desc)"
+                ),
+                {"id": p_id, "codename": codename, "name": name, "desc": desc},
+            )
+
+            for role_name, config in ROLES_CONFIG.items():
+                perms = config.get("permissions", [])
+                if codename in perms or "super_admin" in perms:
+                    conn.execute(
+                        text(
+                            "INSERT INTO role_permissions (role_id, permission_id) "
+                            "VALUES (:role_id, :permission_id)"
+                        ),
+                        {"role_id": role_ids[role_name], "permission_id": p_id},
+                    )
+
     yield
     with sync_engine.begin() as conn:
         db_module.Base.metadata.drop_all(conn, checkfirst=True)
-    if USE_SQLITE:
-        await db_module.engine.dispose()
-        sync_engine.dispose()
-        if os.path.exists(TEST_DB_FILE):
-            try:
-                os.remove(TEST_DB_FILE)
-            except OSError as e:
-                print(f"Error removing {TEST_DB_FILE}: {e}")
+    await db_module.engine.dispose()
+    sync_engine.dispose()
+    if USE_SQLITE and os.path.exists(TEST_DB_FILE):
+        try:
+            os.remove(TEST_DB_FILE)
+        except OSError as e:
+            print(f"Error removing {TEST_DB_FILE}: {e}")
 
 
 @pytest_asyncio.fixture

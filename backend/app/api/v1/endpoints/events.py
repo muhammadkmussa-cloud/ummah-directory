@@ -1,7 +1,8 @@
+import uuid
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -68,11 +69,6 @@ async def list_events(
     )
 
 
-import uuid
-
-from sqlalchemy import or_
-
-
 @router.get("/{slug}", response_model=EventResponse)
 async def get_event(slug: str, db: AsyncSession = Depends(get_db)):
     try:
@@ -135,8 +131,11 @@ async def create_event(
         longitude=req.longitude,
         registration_link=req.registration_link,
         category=req.category,
-        organizer_type=req.organizer_type,
-        organizer_id=req.organizer_id,
+        organizer_id=(
+            uuid.UUID(req.organizer_id)
+            if isinstance(req.organizer_id, str)
+            else req.organizer_id
+        ),
         status="published",
     )
     db.add(event)

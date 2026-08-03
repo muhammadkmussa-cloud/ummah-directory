@@ -13,7 +13,7 @@ export default function AnimatedTabs({ tabs, activeTab, onChange }: AnimatedTabs
         <button
           key={tab}
           onClick={() => onChange(tab)}
-          className={`relative px-3.5 sm:px-5 py-3 text-xs sm:text-sm font-semibold transition-colors whitespace-nowrap ${
+          className={`relative px-3.5 sm:px-5 py-3.5 text-xs sm:text-sm font-semibold transition-colors whitespace-nowrap ${
             activeTab === tab ? 'text-emerald-600 font-bold' : 'text-surface-500 hover:text-surface-800'
           }`}
         >

@@ -15,13 +15,13 @@ async def test_admin_dashboard_requires_admin_role(api_client: AsyncClient, auth
 
 
 @pytest.mark.asyncio
-async def test_list_pending_businesses_requires_auth(api_client: AsyncClient):
-    resp = await api_client.get("/api/v1/admin/businesses/pending")
+async def test_list_pending_organizations_requires_auth(api_client: AsyncClient):
+    resp = await api_client.get("/api/v1/admin/organizations/pending")
     assert resp.status_code == 401
 
 
 @pytest.mark.asyncio
-async def test_list_reports(api_client: AsyncClient, auth_headers: dict, sample_category: str):
+async def test_list_reports(api_client: AsyncClient, auth_headers: dict):
     resp = await api_client.get("/api/v1/admin/reports", headers=auth_headers)
     assert resp.status_code == 403
 

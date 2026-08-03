@@ -198,13 +198,13 @@ export default function CampaignManager() {
                     className="input-field min-h-[100px] resize-none"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Input label="Email" type="email" {...register('email')} />
                   <Input label="Phone" type="tel" {...register('phone')} />
                 </div>
                 <Input label="Website" type="url" {...register('website')} />
                 <Input label="Address" {...register('address')} />
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Input label="City" {...register('city')} />
                   <Input label="Country" {...register('country')} />
                 </div>

@@ -107,9 +107,9 @@ export default function OrganizationEditSheet({
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
 
       {/* Sheet */}
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[85vh] overflow-hidden animate-in slide-in-from-bottom-4 fade-in">
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[85vh] overflow-hidden flex flex-col animate-in slide-in-from-bottom-4 fade-in">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-surface-100 bg-white sticky top-0 z-10">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-surface-100 bg-white sticky top-0 z-10 shrink-0">
           <div>
             <h2 className="text-lg font-bold text-surface-900">Edit Organization</h2>
             <p className="text-sm text-surface-500 mt-0.5">{organization.name}</p>
@@ -123,7 +123,7 @@ export default function OrganizationEditSheet({
         </div>
 
         {/* Body */}
-        <div className="px-6 py-5 overflow-y-auto max-h-[calc(85vh-140px)]">
+        <div className="px-6 py-5 flex-1 overflow-y-auto min-h-0">
           {serverError && (
             <div className="bg-red-50 text-red-700 px-4 py-3 rounded-xl mb-5 text-sm border border-red-100">
               {serverError}
@@ -190,7 +190,7 @@ export default function OrganizationEditSheet({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-surface-100 bg-surface-50">
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-surface-100 bg-surface-50 shrink-0">
           <Button type="button" variant="outline" onClick={onClose}>
             Cancel
           </Button>

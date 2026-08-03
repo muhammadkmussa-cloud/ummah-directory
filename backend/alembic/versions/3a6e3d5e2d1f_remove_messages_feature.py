@@ -19,9 +19,9 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.drop_index(op.f('ix_msg_conv_id'), table_name='messages')
-    op.drop_table('messages')
-    op.drop_table('conversations')
+    op.execute('DROP INDEX IF EXISTS ix_msg_conv_id')
+    op.execute('DROP TABLE IF EXISTS messages CASCADE')
+    op.execute('DROP TABLE IF EXISTS conversations CASCADE')
 
 
 def downgrade() -> None:

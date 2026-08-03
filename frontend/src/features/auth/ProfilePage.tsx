@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useForm } from 'react-hook-form'
-import { User, Bell, Settings, LogOut, ChevronRight, Lock, Globe, Shield, Heart, AlertTriangle, Camera, MapPin, Smartphone, CheckCircle, X } from 'lucide-react'
+import { User, Bell, LogOut, ChevronRight, Globe, Shield, Heart, AlertTriangle, Camera, MapPin, Smartphone, CheckCircle, Receipt, X } from 'lucide-react'
 import { motion } from 'framer-motion'
 import api from '@/lib/api-client'
 import { Button, Input, Card, Modal, Badge } from '@/components/ui'
@@ -139,14 +139,14 @@ export default function ProfilePage() {
     { id: 'profile', label: 'Edit Profile', icon: User },
     { id: 'security', label: 'Security & Password', icon: Shield },
     { id: 'favorites', label: 'My Favorites', icon: Heart },
-    { id: 'donations', label: 'Donation History', icon: Shield },
+    { id: 'donations', label: 'Donation History', icon: Receipt },
     { id: 'notifications', label: 'Notifications', icon: Bell },
   ]
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 pb-24 md:pb-8">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold text-surface-900 tracking-tight">Settings</h1>
+      <div className="flex items-center justify-between flex-wrap gap-3 mb-8">
+        <h1 className="text-2xl sm:text-3xl font-bold text-surface-900 tracking-tight">Settings</h1>
         <Button variant="outline" size="sm" onClick={handleLogout} className="text-red-600 border-red-200 hover:bg-red-50">
           <LogOut className="w-4 h-4 mr-2" /> Log out
         </Button>
@@ -165,17 +165,36 @@ export default function ProfilePage() {
             size="sm" 
             onClick={() => resendVerification.mutate()} 
             loading={resendVerification.isPending}
-            className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border-yellow-300 shrink-0"
+            className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border-yellow-300 shrink-0 w-full sm:w-auto"
           >
             Resend Verification
           </Button>
         </div>
       )}
 
+      {/* Mobile settings nav - horizontal scrollable chip row (sticky-free) */}
+      <nav className="md:hidden -mx-4 px-4 mb-6 flex gap-2 overflow-x-auto scrollbar-none" aria-label="Settings sections">
+        {menuItems.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => setActiveSection(item.id as any)}
+            aria-pressed={activeSection === item.id}
+            className={`inline-flex items-center gap-2 h-11 px-4 rounded-full whitespace-nowrap shrink-0 text-sm font-semibold transition-colors ${
+              activeSection === item.id
+                ? 'bg-primary-600 text-white shadow-sm'
+                : 'bg-white text-surface-600 border border-surface-200 hover:bg-surface-50'
+            }`}
+          >
+            <item.icon className="w-4 h-4" />
+            {item.label}
+          </button>
+        ))}
+      </nav>
+
       <div className="flex flex-col md:flex-row gap-8">
-        {/* Settings Sidebar */}
-        <div className="md:w-64 shrink-0">
-          <Card className="p-2 border-none shadow-sm sticky top-24">
+        {/* Settings Sidebar - Desktop only */}
+        <aside className="hidden md:block md:w-64 shrink-0">
+          <Card className="p-2 border-none shadow-sm md:sticky md:top-24">
             <div className="space-y-1">
               {menuItems.map((item) => (
                 <button
@@ -196,7 +215,7 @@ export default function ProfilePage() {
               ))}
             </div>
           </Card>
-        </div>
+        </aside>
 
         {/* Main Content Area */}
         <div className="flex-1">
@@ -236,8 +255,8 @@ export default function ProfilePage() {
 
                 {/* Avatar */}
                 <div className="flex items-end gap-4 -mt-24 mb-8 pb-8 border-b border-surface-100 relative z-10">
-                  <div className="relative group">
-                    <div className="w-24 h-24 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center text-4xl font-bold uppercase overflow-hidden ring-4 ring-white shadow-md">
+                  <div className="relative group shrink-0">
+                    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center text-3xl sm:text-4xl font-bold uppercase overflow-hidden ring-4 ring-white shadow-md">
                       {user?.profile_photo_url || avatarUrl ? (
                         <img src={avatarUrl || user?.profile_photo_url} alt="Avatar" className="w-full h-full object-cover" />
                       ) : (
@@ -274,7 +293,7 @@ export default function ProfilePage() {
                               <CheckCircle className="w-3.5 h-3.5" /> Verified
                             </span>
                           ) : phoneVerifyMode ? (
-                            <div className="flex items-center gap-2 mt-2">
+                            <div className="flex items-center gap-2 mt-2 flex-wrap">
                               {!codeSent ? (
                                 <>
                                   <input
@@ -354,7 +373,7 @@ export default function ProfilePage() {
                   <Button
                     variant="outline"
                     onClick={() => setShowDeactivateModal(true)}
-                    className="border-red-200 text-red-600 hover:bg-red-50"
+                    className="border-red-200 text-red-600 hover:bg-red-50 w-full sm:w-auto"
                   >
                     Deactivate Account
                   </Button>
@@ -365,15 +384,15 @@ export default function ProfilePage() {
                     <p className="text-surface-600">
                       Are you sure you want to deactivate your account? You will be logged out and will not be able to log back in.
                     </p>
-                    <div className="flex gap-3 justify-end">
-                      <Button variant="outline" onClick={() => setShowDeactivateModal(false)}>
+                    <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+                      <Button variant="outline" onClick={() => setShowDeactivateModal(false)} className="w-full sm:w-auto">
                         Cancel
                       </Button>
                       <Button
                         variant="primary"
                         onClick={() => deactivateMutation.mutate()}
                         loading={deactivateMutation.isPending}
-                        className="bg-red-600 hover:bg-red-700"
+                        className="bg-red-600 hover:bg-red-700 w-full sm:w-auto"
                       >
                         Yes, Deactivate
                       </Button>
@@ -397,7 +416,7 @@ export default function ProfilePage() {
 
             {activeSection === 'favorites' && (
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2 }}>
-                <FavoritesPage />
+                <FavoritesPage embedded />
               </motion.div>
             )}
 

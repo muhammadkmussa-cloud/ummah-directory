@@ -59,14 +59,14 @@ export default function DonationHistory() {
 
   return (
     <div className="space-y-6">
-      <div className="mb-6 pb-6 border-b border-surface-100 flex items-center justify-between">
+      <div className="mb-6 pb-6 border-b border-surface-100 flex flex-col gap-2 sm:flex-row sm:items-center">
         <div>
           <h2 className="text-xl font-bold text-surface-900 flex items-center gap-2">
             <HeartHandshake className="w-5 h-5 text-primary-600" /> Donation History
           </h2>
           <p className="text-surface-500 text-sm mt-1">View your past contributions and download receipts.</p>
         </div>
-        <div className="text-right">
+        <div className="text-left sm:text-right">
           <p className="text-2xl font-bold text-primary-600">
             ${stats?.total_amount ? parseFloat(stats.total_amount).toFixed(2) : '0.00'}
           </p>
@@ -90,14 +90,14 @@ export default function DonationHistory() {
                 <div className="w-12 h-12 rounded-full bg-primary-50 text-primary-600 flex items-center justify-center shrink-0">
                   <DollarSign className="w-6 h-6" />
                 </div>
-                <div>
+                <div className="min-w-0 break-words">
                   <h3 className="font-bold text-surface-900 text-lg">
                     ${donation.amount.toFixed(2)} {donation.currency.toUpperCase()}
                   </h3>
                   <p className="text-sm font-medium text-surface-700">
                     To: {donation.campaign_title || donation.charity_name || 'Charity'}
                   </p>
-                  <div className="flex items-center gap-3 mt-2 text-xs text-surface-500">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs text-surface-500">
                     <span className="flex items-center gap-1">
                       <Calendar className="w-3.5 h-3.5" />
                       {new Date(donation.created_at).toLocaleDateString()}

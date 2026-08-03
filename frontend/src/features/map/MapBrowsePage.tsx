@@ -238,7 +238,7 @@ export default function MapBrowsePage() {
   }
 
   return (
-    <div className="relative w-full h-[calc(100vh-4rem)] overflow-hidden bg-slate-900 font-sans">
+    <div className="relative w-full h-[calc(100dvh-5rem)] md:h-[100dvh] overflow-hidden bg-slate-900 font-sans">
       {/* Top Floating Controls */}
       <div className="absolute top-4 left-4 right-4 z-20 max-w-4xl mx-auto flex flex-col gap-3">
         {/* Search Bar & Type Badges */}
@@ -322,7 +322,7 @@ export default function MapBrowsePage() {
 
       {/* Snapchat-Style Bottom Drawer Card Preview when Marker is Selected */}
       {selectedItem && (
-        <div className="absolute bottom-6 left-4 right-4 z-30 max-w-lg mx-auto bg-white/95 backdrop-blur-md rounded-3xl p-5 shadow-2xl border border-slate-200/80 animate-in slide-in-from-bottom duration-300">
+        <div className="absolute bottom-24 md:bottom-6 left-4 right-4 z-30 max-w-lg mx-auto bg-white/95 backdrop-blur-md rounded-3xl p-5 shadow-2xl border border-slate-200/80 animate-in slide-in-from-bottom duration-300">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-3.5 flex-1 min-w-0">
               {selectedItem.cover_image_url || selectedItem.image_url ? (

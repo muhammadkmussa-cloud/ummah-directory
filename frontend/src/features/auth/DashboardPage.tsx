@@ -42,7 +42,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-3 sm:px-4 py-6 sm:py-8 overflow-x-hidden">
       {/* Admin Quick Portal Banner */}
       {isAdmin && (
         <div className="mb-6 p-4 rounded-2xl bg-slate-900 text-white shadow-lg flex flex-col sm:flex-row items-center justify-between gap-4 border border-slate-800">
@@ -72,14 +72,14 @@ export default function DashboardPage() {
 
       {/* Pending Items Banner */}
       {((s.pending_organizations || 0) > 0 || (s.pending_claims || 0) > 0) && (
-        <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-amber-100 text-amber-700">
-              <FileText className="w-6 h-6" />
+        <div className="mb-6 p-3 sm:p-4 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 overflow-hidden">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="p-2 sm:p-2.5 rounded-xl bg-amber-100 text-amber-700 shrink-0">
+              <FileText className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
-            <div>
-              <h2 className="font-bold text-base text-amber-900">Pending Items</h2>
-              <p className="text-xs text-amber-700">
+            <div className="min-w-0">
+              <h2 className="font-bold text-sm sm:text-base text-amber-900">Pending Items</h2>
+              <p className="text-xs text-amber-700 break-words">
                 {(s.pending_organizations || 0) > 0 && `${s.pending_organizations} organization(s) pending review. `}
                 {(s.pending_claims || 0) > 0 && `${s.pending_claims} claim(s) pending review.`}
               </p>
@@ -89,45 +89,69 @@ export default function DashboardPage() {
       )}
 
       {/* User Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold">Welcome, {u.full_name || 'User'}</h1>
-          <p className="text-gray-600 text-sm">{u.email}</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-8">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold truncate">Welcome, {u.full_name || 'User'}</h1>
+          <p className="text-gray-600 text-sm truncate">{u.email}</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <Badge variant={u.is_email_verified ? 'success' : 'error'}>
             {u.is_email_verified ? 'Verified Account' : 'Unverified Email'}
           </Badge>
-          <Link to="/profile" className="btn-outline text-sm">Edit Profile</Link>
+          <Link to="/profile" className="btn-outline text-sm whitespace-nowrap">Edit Profile</Link>
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-        {[
-          { icon: Heart, label: 'Favorites', value: s.favorites ?? 0 },
-          { icon: Star, label: 'Reviews', value: s.reviews ?? 0 },
-          { icon: MapPin, label: 'Donations', value: s.donations ?? 0 },
-          { icon: Building2, label: 'Organizations', value: s.organizations ?? s.businesses ?? orgs.length },
-          { icon: Bell, label: 'Unread', value: s.unread_notifications ?? 0 },
-          { icon: FileText, label: 'Claims', value: s.ownership_claims ?? 0 },
-          { icon: Bell, label: 'Ad Campaigns', value: `${s.active_campaigns ?? 0}/${s.total_campaigns ?? 0}` },
-        ].map((stat) => (
-          <Card key={stat.label} className="text-center hover:shadow-md transition-shadow">
-            <stat.icon className="w-5 h-5 text-emerald-600 mx-auto mb-2" />
-            <p className="text-2xl font-bold text-slate-900">{stat.value}</p>
-            <p className="text-xs text-gray-500 font-medium">{stat.label}</p>
-          </Card>
-        ))}
+      {/* Stats Cards - Horizontal scroll on mobile, grid on sm+ */}
+      <div className="mb-8">
+        {/* Mobile: horizontal scroll */}
+        <div className="flex gap-2 overflow-x-auto scrollbar-none -mx-3 px-3 pb-2 sm:hidden">
+          {[
+            { icon: Heart, label: 'Favorites', value: s.favorites ?? 0 },
+            { icon: Star, label: 'Reviews', value: s.reviews ?? 0 },
+            { icon: MapPin, label: 'Donations', value: s.donations ?? 0 },
+            { icon: Building2, label: 'Orgs', value: s.organizations ?? s.businesses ?? orgs.length },
+            { icon: Bell, label: 'Unread', value: s.unread_notifications ?? 0 },
+            { icon: FileText, label: 'Claims', value: s.ownership_claims ?? 0 },
+            { icon: Bell, label: 'Campaigns', value: `${s.active_campaigns ?? 0}/${s.total_campaigns ?? 0}` },
+          ].map((stat) => (
+            <div
+              key={stat.label}
+              className="flex-none w-28 text-center bg-white rounded-2xl p-3 border border-surface-100 shadow-sm"
+            >
+              <stat.icon className="w-4 h-4 text-emerald-600 mx-auto mb-1" />
+              <p className="text-lg font-bold text-slate-900">{stat.value}</p>
+              <p className="text-[10px] text-gray-500 font-medium">{stat.label}</p>
+            </div>
+          ))}
+        </div>
+        {/* Desktop: grid */}
+        <div className="hidden sm:grid sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-4">
+          {[
+            { icon: Heart, label: 'Favorites', value: s.favorites ?? 0 },
+            { icon: Star, label: 'Reviews', value: s.reviews ?? 0 },
+            { icon: MapPin, label: 'Donations', value: s.donations ?? 0 },
+            { icon: Building2, label: 'Organizations', value: s.organizations ?? s.businesses ?? orgs.length },
+            { icon: Bell, label: 'Unread', value: s.unread_notifications ?? 0 },
+            { icon: FileText, label: 'Claims', value: s.ownership_claims ?? 0 },
+            { icon: Bell, label: 'Ad Campaigns', value: `${s.active_campaigns ?? 0}/${s.total_campaigns ?? 0}` },
+          ].map((stat) => (
+            <Card key={stat.label} className="text-center hover:shadow-md transition-shadow">
+              <stat.icon className="w-5 h-5 text-emerald-600 mx-auto mb-2" />
+              <p className="text-2xl font-bold text-slate-900">{stat.value}</p>
+              <p className="text-xs text-gray-500 font-medium">{stat.label}</p>
+            </Card>
+          ))}
+        </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-4 border-b mb-6 overflow-x-auto">
+      <div className="flex gap-2 sm:gap-4 border-b mb-6 overflow-x-auto scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0">
         {tabs.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-3 text-xs sm:text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
               tab === t.id ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
@@ -141,12 +165,12 @@ export default function DashboardPage() {
       {tab === 'overview' && (
         <div className="space-y-6">
           <Card>
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
               <h3 className="font-semibold flex items-center gap-2 text-slate-900">
-                <Building2 className="w-4 h-4 text-emerald-600" />
+                <Building2 className="w-4 h-4 text-emerald-600 shrink-0" />
                 Your Organizations ({orgs.length})
               </h3>
-              <Link to="/organizations/new" className="text-xs text-emerald-600 font-semibold hover:underline flex items-center gap-1">
+              <Link to="/organizations/new" className="text-xs text-emerald-600 font-semibold hover:underline flex items-center gap-1 shrink-0">
                 <Plus className="w-3.5 h-3.5" /> Add Organization
               </Link>
             </div>
@@ -161,15 +185,15 @@ export default function DashboardPage() {
             ) : (
               <div className="divide-y divide-gray-100">
                 {orgs.slice(0, 5).map((o: any) => (
-                  <div key={o.id} className="py-3 flex items-center justify-between text-sm">
-                    <div>
+                  <div key={o.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-2 text-sm">
+                    <div className="min-w-0">
                       <Link to={getOrgLink(o)} className="font-semibold text-slate-900 hover:text-emerald-600 flex items-center gap-1.5">
-                        <span>{o.name}</span>
-                        <ExternalLink className="w-3.5 h-3.5 text-gray-400" />
+                        <span className="truncate">{o.name}</span>
+                        <ExternalLink className="w-3.5 h-3.5 text-gray-400 shrink-0" />
                       </Link>
                       <span className="text-xs text-gray-400 capitalize">{o.organization_type || 'business'}</span>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 shrink-0">
                       <Badge variant={o.status === 'approved' || o.status === 'active' ? 'success' : o.status === 'pending' ? 'pending' : 'error'}>
                         {o.status}
                       </Badge>
@@ -231,9 +255,9 @@ export default function DashboardPage() {
       {/* Tab 2: My Organizations */}
       {tab === 'listings' && (
         <div className="space-y-4">
-          <div className="flex justify-between items-center mb-4">
+          <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 mb-4">
             <h3 className="font-semibold text-lg">My Managed Organizations</h3>
-            <Link to="/organizations/new" className="btn-primary text-xs flex items-center gap-1">
+            <Link to="/organizations/new" className="btn-primary text-xs flex items-center gap-1 w-fit shrink-0">
               <Plus className="w-4 h-4" /> Add New Organization
             </Link>
           </div>
@@ -244,13 +268,13 @@ export default function DashboardPage() {
             </Card>
           ) : (
             orgs.map((o: any) => (
-              <Card key={o.id} className="flex items-center justify-between">
-                <div>
+              <Card key={o.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="min-w-0">
                   <Link to={getOrgLink(o)} className="font-bold text-slate-900 hover:text-emerald-600 text-base flex items-center gap-2">
-                    {o.name}
-                    <ExternalLink className="w-4 h-4 text-gray-400" />
+                    <span className="truncate">{o.name}</span>
+                    <ExternalLink className="w-4 h-4 text-gray-400 shrink-0" />
                   </Link>
-                  <div className="flex items-center gap-2 mt-1.5">
+                  <div className="flex flex-wrap items-center gap-2 mt-1.5">
                     <span className="text-xs font-semibold px-2 py-0.5 rounded bg-gray-100 text-gray-600 uppercase">
                       {o.organization_type || 'business'}
                     </span>
@@ -279,14 +303,14 @@ export default function DashboardPage() {
           ) : (
             data.recent_donations?.map((d: any) => (
               <Card key={d.id}>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div>
                     <p className="font-bold text-slate-900">{d.amount} {d.currency}</p>
                     <p className="text-xs text-gray-500">Receipt #{d.receipt_number || 'N/A'}</p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 shrink-0">
                     <Badge variant={d.status === 'completed' ? 'success' : 'pending'}>{d.status}</Badge>
-                    <a href={`/api/v1/donations/${d.id}/receipt/pdf`} className="btn-outline text-xs px-2.5 py-1" target="_blank" rel="noreferrer">
+                    <a href={`/api/v1/donations/${d.id}/receipt/pdf`} className="btn-outline text-xs px-2.5 py-1 whitespace-nowrap" target="_blank" rel="noreferrer">
                       <FileText className="w-3.5 h-3.5 inline mr-1" /> Receipt
                     </a>
                   </div>

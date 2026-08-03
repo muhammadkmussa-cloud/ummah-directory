@@ -26,6 +26,18 @@ export default function LandingNavigation() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Lock body scroll while the mobile menu is open (mirrors Modal/BottomSheet pattern)
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isMobileMenuOpen]);
+
   const navLinks = [
     { label: 'Home', href: '#' },
     { label: 'Features', href: '#features' },

@@ -233,7 +233,7 @@ export default function MosqueDetailPage() {
 
             {activeTab === 'Facilities' && (
               <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {facilities.map((f) => (
                     <div key={f.label} className={`p-4 rounded-2xl ${f.active ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-surface-100 text-surface-400 border border-transparent'}`}>
                       <p className="font-bold">{f.label}</p>

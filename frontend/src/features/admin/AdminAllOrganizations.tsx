@@ -44,7 +44,7 @@ export default function AdminAllOrganizations() {
         )}
         
         {orgs?.map((org: any) => (
-          <div key={org.id} className="p-6 flex items-center justify-between hover:bg-surface-50/50 transition-colors">
+          <div key={org.id} className="p-6 flex items-center justify-between gap-3 flex-wrap hover:bg-surface-50/50 transition-colors">
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <Badge className="capitalize">{org.organization_type}</Badge>

@@ -2,9 +2,9 @@ services:
   postgres:
     image: docker.io/postgis/postgis:17-3.5
     environment:
-      POSTGRES_USER: ummah
-      POSTGRES_PASSWORD: ummah_dev_password
-      POSTGRES_DB: ummah_directory
+      POSTGRES_USER: ${POSTGRES_USER:-ummah}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ummah_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-ummah_directory}
     ports:
       - "5433:5432"
     volumes:
@@ -33,13 +33,13 @@ services:
       - .env
     environment:
       - PYTHONPATH=/app
-      - DATABASE_URL=postgresql+asyncpg://ummah:ummah_dev_password@postgres:5432/ummah_directory
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-ummah}:${POSTGRES_PASSWORD:-ummah_dev_password}@postgres:5432/${POSTGRES_DB:-ummah_directory}
       - REDIS_URL=redis://redis:6379/0
       - APP_ENV=development
       - APP_DEBUG=true
       - CORS_ORIGINS=http://localhost:5173,http://localhost:3000
     ports:
-      - "8000:8000"
+      - "8001:8000"
     volumes:
       - ./backend:/app
     depends_on:
@@ -57,7 +57,7 @@ services:
       - .env
     environment:
       - PYTHONPATH=/app
-      - DATABASE_URL=postgresql+asyncpg://ummah:ummah_dev_password@postgres:5432/ummah_directory
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-ummah}:${POSTGRES_PASSWORD:-ummah_dev_password}@postgres:5432/${POSTGRES_DB:-ummah_directory}
       - REDIS_URL=redis://redis:6379/0
     volumes:
       - ./backend:/app
@@ -76,7 +76,7 @@ services:
       - .env
     environment:
       - PYTHONPATH=/app
-      - DATABASE_URL=postgresql+asyncpg://ummah:ummah_dev_password@postgres:5432/ummah_directory
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-ummah}:${POSTGRES_PASSWORD:-ummah_dev_password}@postgres:5432/${POSTGRES_DB:-ummah_directory}
       - REDIS_URL=redis://redis:6379/0
     volumes:
       - ./backend:/app
@@ -97,7 +97,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.dev
     environment:
-      VITE_API_URL: http://localhost:8000/api/v1
+      VITE_API_URL: http://localhost:8001/api/v1
     ports:
       - "5173:5173"
     volumes:

@@ -171,7 +171,7 @@ export default function AdsManager() {
                   {ad.link_url}
                 </a>
                 
-                <div className="grid grid-cols-2 gap-3 mb-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                   <div className="bg-surface-50 p-3 rounded-xl border border-surface-100">
                     <p className="text-xs text-surface-500 mb-1 flex items-center gap-1"><DollarSign className="w-3 h-3" /> Budget</p>
                     <p className="font-bold text-surface-900">${ad.budget}</p>

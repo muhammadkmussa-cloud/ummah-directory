@@ -160,7 +160,7 @@ export default function AdminDashboard() {
         </h1>
       </div>
 
-      <div className="grid grid-cols-3 gap-3 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
         <Card className="p-4 text-center">
           <p className="text-2xl font-bold text-yellow-600">{(stats?.pending_businesses || 0) + (pendingOrgs?.total || 0)}</p>
           <p className="text-xs text-surface-500 font-medium uppercase tracking-wider">Pending</p>
@@ -169,7 +169,7 @@ export default function AdminDashboard() {
           <p className="text-2xl font-bold text-blue-600">{stats?.pending_claims || 0}</p>
           <p className="text-xs text-surface-500 font-medium uppercase tracking-wider">Claims</p>
         </Card>
-        <Card className="p-4 text-center">
+        <Card className="p-4 text-center col-span-2 sm:col-span-1">
           <p className="text-2xl font-bold text-red-600">{stats?.pending_reports || 0}</p>
           <p className="text-xs text-surface-500 font-medium uppercase tracking-wider">Reports</p>
         </Card>
