@@ -6,6 +6,7 @@ import { User, Bell, LogOut, ChevronRight, Globe, Shield, Heart, AlertTriangle, 
 import { motion } from 'framer-motion'
 import api from '@/lib/api-client'
 import { Button, Input, Card, Modal, Badge } from '@/components/ui'
+import BottomSheet from '@/components/ui/BottomSheet'
 import ImageUploader from '@/components/ui/ImageUploader'
 import SecuritySettings from './SecuritySettings'
 import DonationHistory from '../donations/DonationHistory'
@@ -144,16 +145,16 @@ export default function ProfilePage() {
   ]
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8 pb-24 md:pb-8">
-      <div className="flex items-center justify-between flex-wrap gap-3 mb-8">
-        <h1 className="text-2xl sm:text-3xl font-bold text-surface-900 tracking-tight">Settings</h1>
-        <Button variant="outline" size="sm" onClick={handleLogout} className="text-red-600 border-red-200 hover:bg-red-50">
+    <div className="max-w-4xl md:mx-auto px-0 md:px-4 py-4 md:py-8 pb-24 md:pb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 md:mb-8 px-4 md:px-0">
+        <h1 className="text-xl sm:text-2xl font-bold text-surface-900 tracking-tight">Settings</h1>
+        <Button variant="outline" size="sm" onClick={handleLogout} className="text-red-600 border-red-200 hover:bg-red-50 w-full sm:w-auto">
           <LogOut className="w-4 h-4 mr-2" /> Log out
         </Button>
       </div>
 
       {!user?.is_email_verified && (
-        <div className="mb-8 bg-yellow-50 border border-yellow-200 rounded-2xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="mb-6 md:mb-8 mx-4 md:mx-0 bg-yellow-50 border border-yellow-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3 text-yellow-800">
             <Shield className="w-5 h-5 shrink-0" />
             <div>
@@ -172,24 +173,28 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* Mobile settings nav - horizontal scrollable chip row (sticky-free) */}
-      <nav className="md:hidden -mx-4 px-4 mb-6 flex gap-2 overflow-x-auto scrollbar-none" aria-label="Settings sections">
-        {menuItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => setActiveSection(item.id as any)}
-            aria-pressed={activeSection === item.id}
-            className={`inline-flex items-center gap-2 h-11 px-4 rounded-full whitespace-nowrap shrink-0 text-sm font-semibold transition-colors ${
-              activeSection === item.id
-                ? 'bg-primary-600 text-white shadow-sm'
-                : 'bg-white text-surface-600 border border-surface-200 hover:bg-surface-50'
-            }`}
-          >
-            <item.icon className="w-4 h-4" />
-            {item.label}
-          </button>
-        ))}
-      </nav>
+      {/* Mobile settings nav - horizontal scrollable chip row with fade indicator */}
+      <div className="relative md:hidden mb-6">
+        <nav className="flex gap-2 overflow-x-auto scrollbar-none px-4" aria-label="Settings sections">
+          {menuItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setActiveSection(item.id as any)}
+              aria-pressed={activeSection === item.id}
+              className={`inline-flex items-center gap-2 h-10 px-3.5 rounded-full whitespace-nowrap shrink-0 text-sm font-semibold transition-colors ${
+                activeSection === item.id
+                  ? 'bg-primary-600 text-white shadow-sm'
+                  : 'bg-white text-surface-600 border border-surface-200 active:bg-surface-50'
+              }`}
+            >
+              <item.icon className="w-4 h-4" />
+              {item.label}
+            </button>
+          ))}
+        </nav>
+        {/* Right fade gradient to indicate more content */}
+        <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-surface-50 to-transparent md:hidden" />
+      </div>
 
       <div className="flex flex-col md:flex-row gap-8">
         {/* Settings Sidebar - Desktop only */}
@@ -232,12 +237,12 @@ export default function ProfilePage() {
             </motion.div>
           )}
 
-          <div className="bg-white rounded-3xl shadow-sm border border-surface-100 p-6 md:p-8">
+          <div className="bg-white rounded-none md:rounded-3xl shadow-sm border-0 md:border md:border-surface-100 p-4 sm:p-6 md:p-8">
             
             {activeSection === 'profile' && (
               <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2 }}>
                 {/* Cover Photo */}
-                <div className="relative w-full h-40 md:h-56 rounded-2xl overflow-hidden bg-gradient-to-br from-primary-100 to-primary-200 mb-16">
+                <div className="relative w-full h-32 md:h-48 rounded-none md:rounded-2xl overflow-hidden bg-gradient-to-br from-primary-100 to-primary-200 mb-12">
                   {(coverUrl || user?.cover_photo_url) && (
                     <img src={coverUrl || user?.cover_photo_url} alt="Cover" className="w-full h-full object-cover" />
                   )}
@@ -254,7 +259,7 @@ export default function ProfilePage() {
                 </div>
 
                 {/* Avatar */}
-                <div className="flex items-end gap-4 -mt-24 mb-8 pb-8 border-b border-surface-100 relative z-10">
+                <div className="flex items-end gap-4 -mt-16 mb-6 pb-4 border-b border-surface-100 relative z-10 px-1">
                   <div className="relative group shrink-0">
                     <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center text-3xl sm:text-4xl font-bold uppercase overflow-hidden ring-4 ring-white shadow-md">
                       {user?.profile_photo_url || avatarUrl ? (
@@ -276,13 +281,13 @@ export default function ProfilePage() {
                     </div>
                   </div>
                   <div className="pb-1">
-                    <h2 className="text-xl font-bold text-surface-900">{user?.full_name || 'User'}</h2>
-                    <p className="text-surface-500">{user?.email}</p>
+                    <h2 className="text-lg sm:text-xl font-bold text-surface-900">{user?.full_name || 'User'}</h2>
+                    <p className="text-sm text-surface-500 truncate max-w-[200px] sm:max-w-none">{user?.email}</p>
                   </div>
                 </div>
 
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-                  <div className="grid md:grid-cols-2 gap-5">
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+                  <div className="grid md:grid-cols-2 gap-4">
                     <Input label="Full Name" {...register('full_name', { required: true })} className="bg-surface-50" />
                     <div>
                       <Input label="Phone Number" type="tel" {...register('phone')} className="bg-surface-50" />
@@ -298,9 +303,9 @@ export default function ProfilePage() {
                                 <>
                                   <input
                                     type="text" value={verifyPhone} onChange={e => setVerifyPhone(e.target.value)}
-                                    placeholder={user.phone} className="input-field text-xs py-1.5 w-36"
+                                    placeholder={user.phone} className="input-field text-xs py-1.5 min-w-0 flex-1"
                                   />
-                                  <Button size="xs" onClick={() => sendPhoneCode.mutate()} loading={sendPhoneCode.isPending}>
+                                  <Button size="xs" onClick={() => sendPhoneCode.mutate()} loading={sendPhoneCode.isPending} className="shrink-0">
                                     Send Code
                                   </Button>
                                 </>
@@ -308,14 +313,14 @@ export default function ProfilePage() {
                                 <>
                                   <input
                                     type="text" value={verifyCode} onChange={e => setVerifyCode(e.target.value)}
-                                    placeholder="6-digit code" maxLength={6} className="input-field text-xs py-1.5 w-32"
+                                    placeholder="6-digit code" maxLength={6} className="input-field text-xs py-1.5 min-w-0 flex-1"
                                   />
-                                  <Button size="xs" onClick={() => confirmPhoneCode.mutate()} loading={confirmPhoneCode.isPending}>
+                                  <Button size="xs" onClick={() => confirmPhoneCode.mutate()} loading={confirmPhoneCode.isPending} className="shrink-0">
                                     Verify
                                   </Button>
                                 </>
                               )}
-                              <button onClick={() => { setPhoneVerifyMode(false); setCodeSent(false) }} className="text-gray-400 hover:text-gray-600">
+                              <button onClick={() => { setPhoneVerifyMode(false); setCodeSent(false) }} className="text-gray-400 hover:text-gray-600 shrink-0">
                                 <X className="w-4 h-4" />
                               </button>
                             </div>
@@ -329,7 +334,7 @@ export default function ProfilePage() {
                     </div>
                   </div>
 
-                  <div className="grid md:grid-cols-2 gap-5">
+                  <div className="grid md:grid-cols-2 gap-4">
                     <Input label="City" {...register('city')} className="bg-surface-50" placeholder="e.g. Nairobi" />
                     <Input label="Country" {...register('country')} className="bg-surface-50" placeholder="e.g. Kenya" />
                   </div>
@@ -355,14 +360,14 @@ export default function ProfilePage() {
                       </select>
                     </div>
                   </div>
-                  <div className="pt-4 flex justify-end">
-                    <Button type="submit" variant="primary" loading={isSubmitting} className="w-full md:w-auto px-8">
+                  <div className="pt-2 flex justify-end">
+                    <Button type="submit" variant="primary" loading={isSubmitting} className="w-full md:w-auto md:px-8">
                       Save Changes
                     </Button>
                   </div>
                 </form>
 
-                <div className="mt-10 pt-8 border-t border-red-100">
+                <div className="mt-8 pt-6 border-t border-red-100">
                   <div className="flex items-center gap-2 mb-2">
                     <AlertTriangle className="w-5 h-5 text-red-500" />
                     <h3 className="text-lg font-bold text-red-700">Danger Zone</h3>
@@ -379,26 +384,53 @@ export default function ProfilePage() {
                   </Button>
                 </div>
 
-                <Modal isOpen={showDeactivateModal} onClose={() => setShowDeactivateModal(false)} title="Deactivate Account">
-                  <div className="space-y-4">
-                    <p className="text-surface-600">
-                      Are you sure you want to deactivate your account? You will be logged out and will not be able to log back in.
-                    </p>
-                    <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
-                      <Button variant="outline" onClick={() => setShowDeactivateModal(false)} className="w-full sm:w-auto">
-                        Cancel
-                      </Button>
-                      <Button
-                        variant="primary"
-                        onClick={() => deactivateMutation.mutate()}
-                        loading={deactivateMutation.isPending}
-                        className="bg-red-600 hover:bg-red-700 w-full sm:w-auto"
-                      >
-                        Yes, Deactivate
-                      </Button>
+                {/* Desktop: Modal for deactivation */}
+                <div className="hidden md:block">
+                  <Modal isOpen={showDeactivateModal} onClose={() => setShowDeactivateModal(false)} title="Deactivate Account">
+                    <div className="space-y-4">
+                      <p className="text-surface-600">
+                        Are you sure you want to deactivate your account? You will be logged out and will not be able to log back in.
+                      </p>
+                      <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+                        <Button variant="outline" onClick={() => setShowDeactivateModal(false)} className="w-full sm:w-auto">
+                          Cancel
+                        </Button>
+                        <Button
+                          variant="primary"
+                          onClick={() => deactivateMutation.mutate()}
+                          loading={deactivateMutation.isPending}
+                          className="bg-red-600 hover:bg-red-700 w-full sm:w-auto"
+                        >
+                          Yes, Deactivate
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                </Modal>
+                  </Modal>
+                </div>
+
+                {/* Mobile: BottomSheet for deactivation */}
+                <div className="md:hidden">
+                  <BottomSheet isOpen={showDeactivateModal} onClose={() => setShowDeactivateModal(false)} title="Deactivate Account">
+                    <div className="space-y-4">
+                      <p className="text-surface-600">
+                        Are you sure you want to deactivate your account? You will be logged out and will not be able to log back in.
+                      </p>
+                      <div className="flex flex-col gap-3">
+                        <Button
+                          variant="primary"
+                          onClick={() => deactivateMutation.mutate()}
+                          loading={deactivateMutation.isPending}
+                          className="bg-red-600 hover:bg-red-700 w-full"
+                        >
+                          Yes, Deactivate
+                        </Button>
+                        <Button variant="outline" onClick={() => setShowDeactivateModal(false)} className="w-full">
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  </BottomSheet>
+                </div>
               </motion.div>
             )}
 
