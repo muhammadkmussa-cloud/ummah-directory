@@ -18,13 +18,13 @@ function LayoutContent() {
 
   return (
     <div className="min-h-screen bg-surface-50 flex justify-center selection:bg-primary-200 selection:text-primary-900 w-full overflow-x-hidden">
-      <div className="w-full max-w-[1600px] flex overflow-x-hidden">
+      <div className="w-full max-w-[1600px] flex min-w-0 overflow-x-hidden">
         
         {/* Left Sidebar - Desktop Only */}
         <DesktopSidebar />
 
         {/* Main Content Area */}
-        <main className="flex-1 min-w-0 flex flex-col min-h-screen pb-20 md:pb-0 relative border-l border-r border-transparent md:border-surface-200 bg-white overflow-x-hidden w-full">
+        <main className="flex-1 min-w-0 flex flex-col min-h-screen pb-20 md:pb-0 relative border-l border-r border-transparent md:border-surface-200 bg-white w-full max-w-full">
           <Outlet />
         </main>
 
