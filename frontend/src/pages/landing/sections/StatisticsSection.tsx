@@ -32,10 +32,10 @@ function Counter({ from, to, duration = 2, label, suffix = '' }: { from: number,
 
   return (
     <div ref={ref} className="text-center">
-      <div className="text-4xl md:text-5xl font-extrabold text-surface-900 mb-2 font-mono">
+      <div className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-surface-900 mb-2 font-mono">
         {count.toLocaleString()}{suffix}
       </div>
-      <div className="text-surface-600 font-medium">{label}</div>
+      <div className="text-xs sm:text-base text-surface-600 font-medium">{label}</div>
     </div>
   );
 }
