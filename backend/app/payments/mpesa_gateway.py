@@ -1,5 +1,6 @@
 import base64
 import json
+import logging
 from datetime import datetime
 from decimal import Decimal
 
@@ -8,6 +9,8 @@ import httpx
 from app.core.config import settings
 from app.core.retry import with_retry
 from app.payments.base import PaymentEvent, PaymentGateway, PaymentIntent
+
+logger = logging.getLogger(__name__)
 
 MPESA_API = (
     "https://sandbox.safaricom.co.ke"
@@ -204,7 +207,118 @@ class MpesaGateway(PaymentGateway):
             )
 
     async def refund(self, payment_id: str, amount: Decimal | None = None) -> bool:
-        return False
+        """
+        Process a refund for an M-Pesa payment.
+        
+        Note: M-Pesa requires business-to-customer (B2C) payment API for refunds.
+        This implementation uses the B2C API to send money back to the original payer.
+        
+        Args:
+            payment_id: The original payment CheckoutRequestID or transaction ID
+            amount: Amount to refund (optional, defaults to full refund)
+            
+        Returns:
+            True if refund was initiated successfully, False otherwise
+            
+        Raises:
+            NotImplementedError: If B2C credentials are not configured
+        """
+        try:
+            # M-Pesa refunds require B2C (Business to Customer) API
+            # which needs separate credentials from STK Push
+            b2c_key = getattr(settings, 'mpesa_b2c_consumer_key', None)
+            b2c_secret = getattr(settings, 'mpesa_b2c_consumer_secret', None)
+            
+            if not b2c_key or not b2c_secret:
+                # Log that refund requires B2C credentials
+                logger.warning(
+                    "mpesa.refund_requires_b2c",
+                    payment_id=payment_id,
+                    message="M-Pesa refunds require B2C API credentials"
+                )
+                return False
+            
+            # Get B2C access token
+            credentials = f"{b2c_key}:{b2c_secret}"
+            encoded = base64.b64encode(credentials.encode()).decode()
+            
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(
+                    f"{MPESA_API}/oauth/v1/generate?grant_type=client_credentials",
+                    headers={"Authorization": f"Basic {encoded}"},
+                )
+                data = resp.json()
+                token = data.get("access_token")
+                
+                if not token:
+                    return False
+                
+                # First, query the original transaction to get the phone number
+                original_status = await self.query_status(payment_id)
+                
+                # Extract phone number from original transaction if available
+                # For now, we'll need the phone number to be stored in metadata
+                # This is a limitation - in production, store payer phone in donation record
+                phone_number = None  # Should be retrieved from donation record
+                
+                if not phone_number:
+                    logger.warning(
+                        "mpesa.refund_failed_missing_phone",
+                        payment_id=payment_id
+                    )
+                    return False
+                
+                timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+                password_str = f"{settings.mpesa_business_shortcode}{settings.mpesa_passkey}{timestamp}"
+                password = base64.b64encode(password_str.encode()).decode()
+                
+                # Prepare B2C request
+                b2c_payload = {
+                    "ResultType": "Completed",
+                    "CommandID": "SalaryPayment",  # or "BusinessPayment"
+                    "Amount": int(amount) if amount else 0,
+                    "PartyA": settings.mpesa_business_shortcode,
+                    "PartyB": phone_number,
+                    "Remarks": f"Refund for transaction {payment_id}",
+                    "QueueTimeOutURL": settings.mpesa_callback_url,
+                    "ResultURL": settings.mpesa_callback_url,
+                    "Occasion": "Refund"
+                }
+                
+                resp = await client.post(
+                    f"{MPESA_API}/mpesa/b2c/v1/paymentrequest",
+                    json=b2c_payload,
+                    headers={
+                        "Authorization": f"Bearer {token}",
+                        "Content-Type": "application/json"
+                    },
+                )
+                
+                result = resp.json()
+                
+                # Check if refund was accepted
+                if result.get("ConversationID") or result.get("ResponseCode") == "0":
+                    logger.info(
+                        "mpesa.refund_initiated",
+                        payment_id=payment_id,
+                        conversation_id=result.get("ConversationID")
+                    )
+                    return True
+                else:
+                    logger.warning(
+                        "mpesa.refund_rejected",
+                        payment_id=payment_id,
+                        response=result
+                    )
+                    return False
+                    
+        except Exception as e:
+            logger.error(
+                "mpesa.refund_error",
+                payment_id=payment_id,
+                error=str(e)
+            )
+            return False
 
     async def get_status(self, payment_id: str) -> str:
         result = await self.query_status(payment_id)

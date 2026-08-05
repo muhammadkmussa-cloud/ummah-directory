@@ -1,3 +1,6 @@
+import secrets
+from typing import Optional
+from pydantic import field_validator, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -11,10 +14,10 @@ class Settings(BaseSettings):
 
     app_env: str = "development"
     app_debug: bool = False
-    app_secret_key: str = ""
+    app_secret_key: str = Field(default="", min_length=32)
     cors_origins: str = "http://localhost:5173,http://localhost:3000"
 
-    database_url: str = ""
+    database_url: str = Field(default="")
     redis_url: str = "redis://redis:6379/0"
 
     db_pool_size: int = 10
@@ -23,7 +26,7 @@ class Settings(BaseSettings):
     db_pool_timeout: int = 30
     db_pool_pre_ping: bool = True
 
-    jwt_secret_key: str = ""
+    jwt_secret_key: str = Field(default="", min_length=32)
     jwt_access_token_expire_minutes: int = 15
     jwt_refresh_token_expire_days: int = 7
 
@@ -75,6 +78,22 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:5173"
     allowed_hosts: str = "*"
 
+    @field_validator('app_secret_key', 'jwt_secret_key')
+    @classmethod
+    def check_secret_length(cls, v: str, info) -> str:
+        if not v or len(v) < 32:
+            raise ValueError(f"{info.field_name} must be at least 32 characters long")
+        if v == "change-me" or "CHANGE_ME" in v:
+            raise ValueError(f"{info.field_name} must be set to a secure random value, not a placeholder")
+        return v
+
+    @field_validator('database_url')
+    @classmethod
+    def check_database_url(cls, v: str) -> str:
+        if not v:
+            raise ValueError("DATABASE_URL must be set")
+        return v
+
     @property
     def donation_currency_list(self) -> list[str]:
         return [c.strip() for c in self.donation_currencies.split(",")]
@@ -88,20 +107,25 @@ class Settings(BaseSettings):
         return [h.strip() for h in self.allowed_hosts.split(",")]
 
     def validate_secrets(self):
+        """Additional runtime validation for production environment."""
         errors = []
-        if not self.app_secret_key or self.app_secret_key == "change-me":
-            errors.append("APP_SECRET_KEY must be set to a secure random value")
-        if not self.jwt_secret_key or self.jwt_secret_key == "change-me":
-            errors.append("JWT_SECRET_KEY must be set to a secure random value")
-        if not self.database_url:
-            errors.append("DATABASE_URL must be set")
-        if self.app_env == "production" and (
-            "*" in self.allowed_host_list or not self.allowed_host_list
-        ):
-            errors.append(
-                "ALLOWED_HOSTS must be set to explicit host(s) in production "
-                "(the wildcard '*' disables TrustedHost validation)"
-            )
+        
+        # These validations are now handled by field validators, 
+        # but we keep this for additional production-specific checks
+        if self.app_env == "production":
+            if "*" in self.allowed_host_list:
+                errors.append(
+                    "ALLOWED_HOSTS must be set to explicit host(s) in production "
+                    "(the wildcard '*' disables TrustedHost validation)"
+                )
+            
+            # Warn about optional but recommended production settings
+            if not self.sentry_dsn:
+                print("WARNING: SENTRY_DSN not set in production. Error tracking will be disabled.")
+            
+            if not self.mailgun_api_key:
+                print("WARNING: MAILGUN_API_KEY not set. Email functionality will be limited.")
+        
         if errors:
             raise RuntimeError(
                 "Configuration errors:\n  "
